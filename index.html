@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>멸종위기종복원센터 안전 날씨</title>
+<style>
+  :root{
+    --brand:#15543a; --brand2:#2e7d4f;
+    --surface:#f4f6f4; --card:#ffffff;
+    --ink:#182420; --ink2:#4d5c55; --muted:#7b8880; --line:#e3e9e4;
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --good-bg:#eef9ee; --warning-bg:#fdf4de; --serious-bg:#fdeee7; --critical-bg:#fbe9e9;
+    --shadow:0 10px 28px rgba(21,84,58,.08);
+    --r:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,system-ui,sans-serif;
+    background:var(--surface);color:var(--ink);word-break:keep-all;line-height:1.5;overflow-x:hidden;}
+  @media (max-width:400px){ .tiles{grid-template-columns:repeat(2,1fr);} }
+  .wrap{max-width:560px;margin:0 auto;padding:0 14px 40px;}
+
+  /* 헤더 */
+  .appbar{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;
+    padding:22px 14px 50px;border-radius:0 0 26px 26px;}
+  .appbar .in{max-width:560px;margin:0 auto;}
+  .title{font-size:24px;font-weight:900;letter-spacing:-.6px;display:flex;align-items:center;gap:9px;line-height:1.3;}
+  .subtitle{font-size:13.5px;opacity:.88;margin-top:6px;}
+  .locrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px;}
+  .chipbtn{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.12);color:#fff;
+    font-size:12.5px;font-weight:700;padding:8px 12px;border-radius:999px;cursor:pointer;font-family:inherit;}
+  .chipbtn:active{background:rgba(255,255,255,.28);}
+
+  /* 카드 공통 */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:var(--shadow);padding:16px;margin-top:14px;}
+  .card h2{font-size:15px;font-weight:900;color:var(--brand);display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+
+  /* 종합 신호등 */
+  .golight{border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:11px;
+    font-weight:900;border:1.5px solid transparent;margin-bottom:14px;}
+  .golight .gico{font-size:26px;line-height:1;}
+  .golight .gtx{font-size:17px;}
+  .golight .gsub{display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-top:1px;}
+  .go-good{background:var(--good-bg);border-color:#bfe3bf;} .go-good .gtx{color:#0a7d0a;}
+  .go-warning{background:var(--warning-bg);border-color:#f0d79b;} .go-warning .gtx{color:#8a6205;}
+  .go-serious{background:var(--serious-bg);border-color:#f2c4ae;} .go-serious .gtx{color:#b04c22;}
+  .go-critical{background:var(--critical-bg);border-color:#ecb8b8;} .go-critical .gtx{color:#a92f2f;}
+
+  /* 현재 날씨 히어로 */
+  .hero{margin-top:-32px;}
+  .hero .locname{font-size:17px;font-weight:900;}
+  .hero .locsub{font-size:12.5px;color:var(--muted);margin-top:2px;}
+  .heromain{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;}
+  .heroicon{font-size:48px;line-height:1;}
+  .herotemp{font-size:42px;font-weight:900;letter-spacing:-1.5px;}
+  .herotemp small{font-size:20px;font-weight:700;color:var(--ink2);}
+  .heroside{margin-left:auto;text-align:right;font-size:13px;color:var(--ink2);}
+  .feelstrip{margin-top:12px;background:#f2f7f3;border:1px solid var(--line);border-radius:12px;
+    padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .feelstrip .fk{font-size:13.5px;font-weight:800;color:var(--ink2);}
+  .feelstrip .fv{font-size:22px;font-weight:900;letter-spacing:-.5px;}
+  .feelstrip .fnote{margin-left:auto;font-size:12px;color:var(--muted);}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;}
+  .tile{background:#f7faf7;border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center;}
+  .tile .k{font-size:11.5px;color:var(--muted);}
+  .tile .v{font-size:16px;font-weight:900;margin-top:3px;}
+  .tile .v small{font-size:11px;font-weight:700;color:var(--ink2);}
+  .tile.pending .v{color:var(--muted);font-size:12px;font-weight:700;}
+  .sunline{margin-top:12px;border-top:1px dashed var(--line);padding-top:11px;
+    display:flex;align-items:center;gap:12px;font-size:13.5px;flex-wrap:wrap;}
+  .sunline b{font-size:15px;}
+  .sunline .snote{flex-basis:100%;font-size:12.5px;color:var(--ink2);}
+
+  /* 위험 배너(현재) */
+  .risk{border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;
+    border:1px solid transparent;margin-top:12px;}
+  .risk .ico{font-size:22px;line-height:1.2;}
+  .risk .tx b{font-size:14.5px;}
+  .risk .tx p{font-size:13px;margin-top:2px;color:var(--ink2);}
+  .lv-good{background:var(--good-bg);border-color:#cbe9cb;}   .lv-good b{color:#0a7d0a;}
+  .lv-warning{background:var(--warning-bg);border-color:#f3ddab;} .lv-warning b{color:#8a6205;}
+  .lv-serious{background:var(--serious-bg);border-color:#f5cdbb;} .lv-serious b{color:#b04c22;}
+  .lv-critical{background:var(--critical-bg);border-color:#efc3c3;} .lv-critical b{color:#a92f2f;}
+
+  /* 단계 칩 */
+  .lvchip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:900;
+    padding:3px 9px;border-radius:999px;}
+  .lvchip.c-good{background:var(--good-bg);color:#0a7d0a;}
+  .lvchip.c-warning{background:var(--warning-bg);color:#8a6205;}
+  .lvchip.c-serious{background:var(--serious-bg);color:#b04c22;}
+  .lvchip.c-critical{background:var(--critical-bg);color:#a92f2f;}
+
+  /* 3일 전망 */
+  .day{display:flex;gap:10px;padding:11px 2px;border-top:1px solid var(--line);align-items:flex-start;}
+  .day:first-of-type{border-top:none;}
+  .day .dlabel{width:44px;font-size:13.5px;font-weight:900;color:var(--ink2);padding-top:2px;flex:none;}
+  .day .dico{font-size:22px;flex:none;line-height:1.3;}
+  .day .dbody{flex:1;}
+  .day .drow1{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .day .dtemp{font-size:13.5px;font-weight:800;}
+  .day .dtemp .lo{color:#2a78d6;} .day .dtemp .hi{color:#d03b3b;}
+  .day .dact{font-size:12.5px;color:var(--ink2);margin-top:3px;}
+
+  /* 특보 */
+  .warnitem{display:flex;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px;flex-wrap:wrap;}
+  .warnitem:first-of-type{border-top:none;}
+  .none{color:var(--muted);font-size:13px;padding:4px 0;}
+  .warnitem details{flex-basis:100%;margin-top:2px;}
+  .warnitem summary{cursor:pointer;font-size:12px;font-weight:800;color:var(--brand);list-style:none;}
+  .warnitem summary::before{content:"▸ ";}
+  .warnitem details[open] summary::before{content:"▾ ";}
+  .warndetail{font-size:12.5px;color:var(--ink2);background:#f7faf7;border:1px solid var(--line);
+    border-radius:10px;padding:9px 11px;margin-top:6px;white-space:pre-wrap;line-height:1.6;}
+  /* 지역 검색 오버레이 */
+  .ovl{position:fixed;inset:0;background:rgba(20,30,24,.45);z-index:20;display:none;
+    align-items:flex-start;justify-content:center;padding:60px 16px 16px;}
+  .ovl.on{display:flex;}
+  .searchbox{background:#fff;border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.25);
+    width:100%;max-width:420px;padding:14px;}
+  .searchbox h3{font-size:15px;font-weight:900;color:var(--brand);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  .searchbox h3 button{border:none;background:none;font-size:18px;cursor:pointer;color:var(--muted);}
+  .searchbox input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;
+    font-size:14px;font-family:inherit;outline-color:var(--brand2);}
+  .rlist{max-height:300px;overflow-y:auto;margin-top:8px;}
+  .ritem{padding:10px 8px;border-top:1px solid var(--line);font-size:14px;cursor:pointer;display:flex;justify-content:space-between;}
+  .ritem:first-child{border-top:none;}
+  .ritem span{color:var(--muted);font-size:12px;}
+  .ritem:hover{background:#f2f7f3;}
+
+  /* 바로가기 / 긴급연락처 */
+  .cta{display:flex;gap:10px;flex-wrap:wrap;}
+  .ctabtn{flex:1;min-width:200px;display:flex;align-items:center;gap:10px;text-decoration:none;
+    background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-radius:14px;
+    padding:13px 15px;font-weight:900;font-size:14.5px;box-shadow:0 8px 20px rgba(21,84,58,.22);}
+  .ctabtn .ci{font-size:20px;} .ctabtn .cs{display:block;font-size:11.5px;font-weight:700;opacity:.85;margin-top:1px;}
+  .ctabtn.alt{background:#fff;color:var(--brand);border:1.5px solid var(--brand2);box-shadow:none;}
+  .emg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .emgbtn{text-decoration:none;text-align:center;background:#fff;border:1.5px solid var(--line);
+    border-radius:13px;padding:11px 6px;color:var(--ink);}
+  .emgbtn .ei{font-size:20px;} .emgbtn b{display:block;font-size:12.5px;margin-top:3px;}
+  .emgbtn span{display:block;font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .emgbtn.red{border-color:#efc3c3;background:#fdf5f5;}
+
+  /* 푸터/배지 */
+  .stamp{font-size:11.5px;color:var(--muted);margin-top:10px;}
+  .footer{font-size:11.5px;color:var(--muted);text-align:center;margin-top:22px;line-height:1.7;}
+  .badge-sample{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:9;
+    background:#334;color:#fff;font-size:12px;font-weight:800;padding:8px 14px;border-radius:999px;
+    box-shadow:0 6px 18px rgba(0,0,0,.25);opacity:.92;}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);top:14px;z-index:10;background:#1f2a22;color:#fff;
+    font-size:13px;padding:10px 16px;border-radius:12px;box-shadow:0 8px 22px rgba(0,0,0,.3);display:none;max-width:90%;}
+</style>
+</head>
+<body>
+
+<header class="appbar"><div class="in">
+  <div class="title">🌿 멸종위기종복원센터<br>안전 날씨</div>
+  <div class="subtitle">국립생태원 · 연구출장 안전지원 (내부용)</div>
+  <div class="locrow">
+    <button class="chipbtn" onclick="refresh()">🔄 새로고침</button>
+    <button class="chipbtn" onclick="useGPS()">📍 현재위치로 갱신</button>
+    <button class="chipbtn" onclick="useHome()">🏠 기본위치로 복귀</button>
+  </div>
+</div></header>
+
+<div class="wrap">
+
+  <!-- ① 현재 날씨 + 종합판정 + 일출일몰 -->
+  <section class="card hero">
+    <div id="goLight"></div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <div class="locname" id="locName">멸종위기종복원센터</div>
+      <button onclick="openSearch()" style="border:1.5px solid var(--brand2);background:#fff;color:var(--brand);
+        font-size:12px;font-weight:800;padding:5px 10px;border-radius:999px;cursor:pointer;font-family:inherit;">🔍 지역 검색</button>
+    </div>
+    <div class="locsub" id="locSub">경북 영양군 영양읍 고월길 23 · 기준 --:--</div>
+    <div class="heromain">
+      <div class="heroicon" id="wxIcon">🌤️</div>
+      <div>
+        <div class="herotemp"><span id="tempNow">--</span><small>℃</small></div>
+        <div style="font-size:12.5px;color:var(--muted);" id="tempDiff">전일 대비 --</div>
+      </div>
+      <div class="heroside" id="wxText">--</div>
+    </div>
+    <div class="feelstrip">
+      <span class="fk">🌡️ 체감온도</span><span class="fv" id="feels">--℃</span>
+      <span class="fnote">위험판정은 체감온도 기준입니다</span>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="k">풍속</div><div class="v"><span id="wind">--</span> <small>m/s</small></div></div>
+      <div class="tile"><div class="k">습도</div><div class="v"><span id="humid">--</span> <small>%</small></div></div>
+      <div class="tile"><div class="k">강수(1h)</div><div class="v"><span id="rain">--</span> <small>mm</small></div></div>
+      <div class="tile pending" id="pmTile"><div class="k">미세먼지</div><div class="v" id="pm">연동 예정</div></div>
+    </div>
+    <div id="riskBanner"></div>
+    <div class="sunline">
+      ☀️ 일출 <b id="sunrise">--:--</b> 🌙 일몰 <b id="sunset">--:--</b>
+      <span class="snote" id="sunNote"></span>
+    </div>
+    <div class="stamp" id="stampNow"></div>
+  </section>
+
+  <!-- ② 기상특보 현황 -->
+  <section class="card">
+    <h2>📢 기상특보 현황</h2>
+    <div id="warnings"></div>
+  </section>
+
+  <!-- ③ 3일 위험 전망 -->
+  <section class="card">
+    <h2>⚠️ 기상위험 안전알림 <span style="font-weight:700;color:var(--muted);font-size:11.5px;" id="stamp3d"></span></h2>
+    <div id="days"></div>
+  </section>
+
+  <!-- ④ 안전서식 바로가기 -->
+  <section class="card">
+    <h2>📝 안전서식 바로 작성</h2>
+    <div class="cta">
+      <a class="ctabtn" href="https://tally.so/r/VLAe2N" target="_blank" rel="noopener">
+        <span class="ci">✅</span><span>일일 안전확인 일지<span class="cs">조사 당일 · 참석자 전원 서명</span></span></a>
+      <a class="ctabtn alt" href="https://tally.so/r/LZqAop" target="_blank" rel="noopener">
+        <span class="ci">📋</span><span>안전점검 체크리스트<span class="cs">출장 전 1회 작성</span></span></a>
+    </div>
+  </section>
+
+  <!-- ⑤ 긴급 연락처 -->
+  <section class="card">
+    <h2>📞 긴급 연락처 <span style="font-weight:700;color:var(--muted);font-size:11.5px;">누르면 바로 연결됩니다</span></h2>
+    <div class="emg">
+      <a class="emgbtn red" href="tel:119"><span class="ei">🚨</span><b>119</b><span>구조·구급</span></a>
+      <a class="emgbtn" href="tel:131"><span class="ei">🌦️</span><b>131</b><span>기상콜센터</span></a>
+      <a class="emgbtn" id="safetyBtn" href="tel:054-680-7144"><span class="ei">🧑‍💼</span><b id="safetyNum" style="font-size:12px;letter-spacing:-.3px;">054-680-7144</b><span>안전관리 담당</span></a>
+    </div>
+  </section>
+
+  <p class="footer">
+    자료: 기상청 (공공데이터포털) · 위험판정 기준 v0.1 (내부 검토중)<br>
+    본 화면은 내부 참고용이며, 기상특보·안전조치의 최종 확인은 기상청 발표 및 안전관리 담당자 안내를 따릅니다.
+  </p>
+</div>
+
+<div class="ovl" id="ovl" onclick="if(event.target===this)closeSearch()">
+  <div class="searchbox">
+    <h3>다른 지역 날씨 보기 <button onclick="closeSearch()">✕</button></h3>
+    <input id="rq" type="text" placeholder="시·군 이름 입력 (예: 서천, 안동, 여수)" oninput="filterRegions()">
+    <div class="rlist" id="rlist"></div>
+  </div>
+</div>
+
+<div class="badge-sample" id="sampleBadge">🧪 샘플 데이터 미리보기 — 실데이터 연동 전</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════ ① 설정 (여기만 나중에 수정) ═══════════ */
+const MAKE_WEBHOOK_URL = "https://hook.us2.make.com/c22f8lai3jyt1w2937i5l195zp3bwf2l";   // Make 날씨 창구 주소 (연동 시 교체)
+const HOME = { name:"멸종위기종복원센터", sub:"경북 영양군 영양읍 고월길 23", lat:36.656, lon:129.113, stn:143 };
+const SAFETY_TEL = "054-680-7144";         // 안전관리 담당자 번호 (확정 시 교체 — 아래 긴급연락처에 자동 반영)
+
+/* ═══════════ ② 위험판정 규칙표 v0.1 (기준 확정 시 숫자·문구만 수정) ═══════════ */
+const LV = {
+  good:    {key:"good",    label:"양호",  ico:"✅"},
+  warning: {key:"warning", label:"관심",  ico:"🟡"},
+  serious: {key:"serious", label:"주의",  ico:"🟠"},
+  critical:{key:"critical",label:"경고",  ico:"🔴"},
+  danger:  {key:"critical",label:"위험",  ico:"⛔"},
+};
+function judgeHeat(feels){        // 폭염 (체감온도)
+  if (feels >= 38) return {...LV.danger,  name:"폭염 위험", act:"야외조사 원칙적 중단, 실내 대기"};
+  if (feels >= 35) return {...LV.critical,name:"고온 경고", act:"무더위 시간대 야외조사 중단 검토 · 2인 상호 상태 확인"};
+  if (feels >= 33) return {...LV.serious, name:"고온 주의", act:"매시간 10분 그늘 휴식 · 12~17시 야외조사 자제"};
+  if (feels >= 31) return {...LV.warning, name:"고온 관심", act:"수분 자주 섭취 · 밝은 옷 착용"};
+  return null;
+}
+function judgeCold(tmin){         // 한파 (최저기온)
+  if (tmin <= -15) return {...LV.critical,name:"한파 경고", act:"야외조사 단축·중단 검토"};
+  if (tmin <= -12) return {...LV.serious, name:"한파 주의", act:"방한복·핫팩 준비 · 동상 증상 확인 · 장시간 정지작업 금지"};
+  return null;
+}
+function judgeRain(mmPerHour){    // 호우
+  if (mmPerHour >= 10) return {...LV.serious, name:"호우 주의", act:"계곡·하천변 접근 금지 · 차량 저속 운행"};
+  return null;
+}
+function judgeWind(ms){           // 강풍
+  if (ms >= 14) return {...LV.critical,name:"강풍 경고", act:"야외 고소·임내 작업 금지 · 낙하물 주의"};
+  if (ms >= 9)  return {...LV.serious, name:"강풍 주의", act:"낙하물 주의 · 사다리 작업 금지"};
+  return null;
+}
+function judgeAll(d){             // 현재값 기준 종합(가장 높은 단계 1개)
+  const list = [judgeHeat(d.feels), judgeCold(d.tmin), judgeRain(d.rain), judgeWind(d.wind)].filter(Boolean);
+  const rank = {good:0, warning:1, serious:2, critical:3};
+  list.sort((a,b)=>rank[b.key]-rank[a.key]);
+  return list[0] || {...LV.good, name:"위험요인 없음", act:"기본 안전수칙을 지키며 조사를 진행하세요"};
+}
+/* 종합 신호등 문구 */
+const GO = {
+  good:    {ico:"🟢", tx:"조사 가능",        sub:"현재 특별한 기상 위험요인이 없습니다"},
+  warning: {ico:"🟡", tx:"유의하며 진행",    sub:"가벼운 위험요인이 있습니다 — 아래 행동요령 확인"},
+  serious: {ico:"🟠", tx:"주의하며 진행",    sub:"위험요인이 있습니다 — 행동요령을 지켜주세요"},
+  critical:{ico:"🔴", tx:"야외조사 자제 권고", sub:"위험 수준입니다 — 일정 조정·중단을 검토하세요"},
+};
+
+/* ═══════════ ③ 샘플 데이터 (실연동 전 화면 확인용) ═══════════ */
+const SAMPLE = {
+  updated:"2026-08-05 13:44", icon:"🌤️", text:"구름 조금",
+  temp:31.3, diff:-0.5, feels:32.3, wind:3.0, humid:66, rain:0.0, tmin:25.2,
+  pm:null,
+  days:[
+    {label:"오늘", ico:"🌤️", lo:25.2, hi:33.0, risk:{...LV.serious, name:"고온 주의", act:"수분섭취 안내 · 옥외작업 휴식관리 · 열사병 증상 확인"}},
+    {label:"내일", ico:"☀️",  lo:25.0, hi:33.0, risk:{...LV.serious, name:"고온 예상", act:"수분섭취 안내 · 옥외작업 휴식관리 · 작업자 상태확인"}},
+    {label:"모레", ico:"☀️",  lo:25.8, hi:34.9, risk:{...LV.critical,name:"고온 경고 예상", act:"무더위 시간대 야외조사 중단 검토"}},
+  ],
+  warnings:[ {ico:"🔥", tx:"폭염주의보 · 경북북동산지 (샘플)", time:"08-05 10:00 발표",
+    detail:"o 폭염주의보 발표 : 경상북도(영양평지, 안동, 의성)\no 무더위가 지속되겠으니 야외활동을 자제하고 수분을 충분히 섭취하시기 바랍니다. (샘플)"} ],
+  sunrise:"05:41", sunset:"19:29",
+};
+
+/* ═══════════ ④ 화면 그리기 ═══════════ */
+const $ = (id)=>document.getElementById(id);
+function chip(r){ return `<span class="lvchip c-${r.key}">${r.ico} ${r.label}</span>`; }
+function render(d, locName, locSub){
+  const r = judgeAll(d);
+  const g = GO[r.key];
+  $("goLight").innerHTML =
+    `<div class="golight go-${r.key}"><div class="gico">${g.ico}</div>
+     <div><span class="gtx">${g.tx}</span><span class="gsub">${g.sub}</span></div></div>`;
+
+  $("locName").textContent = locName;
+  $("locSub").textContent  = `${locSub} · 기준 ${d.updated}`;
+  $("wxIcon").textContent  = d.icon; $("wxText").textContent = d.text;
+  $("tempNow").textContent = d.temp.toFixed(1);
+  $("tempDiff").textContent= (d.diff==null) ? "전일 대비 —" : `전일 대비 ${d.diff>0?"+":""}${d.diff.toFixed(1)}℃`;
+  $("feels").textContent   = d.feels.toFixed(1)+"℃";
+  $("wind").textContent = d.wind.toFixed(1); $("humid").textContent = d.humid; $("rain").textContent = d.rain.toFixed(1);
+  if (d.pm != null){ $("pmTile").classList.remove("pending"); $("pm").textContent = d.pm; }
+
+  $("riskBanner").innerHTML =
+    `<div class="risk lv-${r.key}"><div class="ico">${r.ico}</div>
+     <div class="tx"><b>오늘 안전주의 · ${r.name}</b><p>${r.act}</p></div></div>`;
+
+  $("sunrise").textContent = d.sunrise; $("sunset").textContent = d.sunset;
+  $("sunNote").textContent = `일몰 1시간 전(${minusHour(d.sunset)})까지 조사를 마무리하고 복귀를 준비하세요.`;
+
+  $("days").innerHTML = d.days.map(day=>`
+    <div class="day">
+      <div class="dlabel">${day.label}</div><div class="dico">${day.ico}</div>
+      <div class="dbody">
+        <div class="drow1">
+          <span class="dtemp"><span class="lo">${day.lo.toFixed(1)}℃</span> / <span class="hi">${day.hi.toFixed(1)}℃</span></span>
+          ${chip(day.risk)} <b style="font-size:13px;">${day.risk.name}</b>
+        </div>
+        <div class="dact">${day.risk.act}</div>
+      </div>
+    </div>`).join("");
+  $("stamp3d").textContent = `기준 ${d.updated}`;
+
+  const esc=(s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  $("warnings").innerHTML = d.warnings.length
+    ? d.warnings.map(w=>`<div class="warnitem"><span>${w.ico}</span><b>${esc(w.tx)}</b>
+        <span style="margin-left:auto;color:var(--muted);font-size:11.5px;">${w.time}</span>
+        ${w.detail?`<details><summary>자세히 보기</summary><div class="warndetail">${esc(w.detail)}</div></details>`:""}</div>`).join("")
+    : `<div class="none">현재 발령 중인 특보가 없습니다.</div>`;
+
+  $("stampNow").textContent = `마지막 갱신 ${d.updated} · 자료: 기상청`;
+}
+function minusHour(hm){ const [h,m]=hm.split(":").map(Number); return `${String((h+23)%24).padStart(2,"0")}:${String(m).padStart(2,"0")}`; }
+
+
+/* ═══════════ ⑤ 실데이터 해석 (기상청 응답 → 화면 데이터) ═══════════ */
+
+/* 좌표(위경도) → 기상청 격자(nx,ny) 변환 */
+function toGrid(lat, lon){
+  const RE=6371.00877, GRID=5.0, SLAT1=30.0, SLAT2=60.0, OLON=126.0, OLAT=38.0, XO=43, YO=136;
+  const D=Math.PI/180, re=RE/GRID, s1=SLAT1*D, s2=SLAT2*D, ol=OLON*D, oa=OLAT*D;
+  let sn=Math.tan(Math.PI*0.25+s2*0.5)/Math.tan(Math.PI*0.25+s1*0.5);
+  sn=Math.log(Math.cos(s1)/Math.cos(s2))/Math.log(sn);
+  let sf=Math.pow(Math.tan(Math.PI*0.25+s1*0.5),sn)*Math.cos(s1)/sn;
+  let ro=re*sf/Math.pow(Math.tan(Math.PI*0.25+oa*0.5),sn);
+  let ra=re*sf/Math.pow(Math.tan(Math.PI*0.25+lat*D*0.5),sn);
+  let th=lon*D-ol; if(th>Math.PI)th-=2*Math.PI; if(th<-Math.PI)th+=2*Math.PI; th*=sn;
+  return {nx:Math.floor(ra*Math.sin(th)+XO+0.5), ny:Math.floor(ro-ra*Math.cos(th)+YO+0.5)};
+}
+
+/* 체감온도: 여름(습구온도식) / 겨울(바람냉각식) / 그 외 = 기온 */
+function feelsLike(T, RH, Wms){
+  if (T >= 20){
+    const Tw = T*Math.atan(0.151977*Math.sqrt(RH+8.313659)) + Math.atan(T+RH)
+             - Math.atan(RH-1.67633) + 0.00391838*Math.pow(RH,1.5)*Math.atan(0.023101*RH) - 4.686035;
+    return -0.2442 + 0.55399*Tw + 0.45535*T - 0.0022*Tw*Tw + 0.00278*Tw*T + 3.0;
+  }
+  const Vkh = Wms*3.6;
+  if (T <= 10 && Vkh >= 4.8){
+    return 13.12 + 0.6215*T - 11.37*Math.pow(Vkh,0.16) + 0.3965*T*Math.pow(Vkh,0.16);
+  }
+  return T;
+}
+
+/* 하늘상태 아이콘 (PTY 우선, 없으면 SKY) */
+function skyIcon(pty, sky){
+  const p = String(pty||"0"), s = String(sky||"1");
+  if (p==="1"||p==="5") return ["🌧️","비"];
+  if (p==="2"||p==="6") return ["🌨️","비/눈"];
+  if (p==="3"||p==="7") return ["❄️","눈"];
+  if (p==="4") return ["🌦️","소나기"];
+  if (s==="4") return ["☁️","흐림"];
+  if (s==="3") return ["⛅","구름 많음"];
+  return ["☀️","맑음"];
+}
+
+/* 일출·일몰 계산 (NOAA 근사식, KST) */
+function sunTimes(lat, lon, date){
+  const rad=Math.PI/180, day=Math.floor((date-new Date(date.getFullYear(),0,0))/864e5);
+  const g=(360/365.25)*(day-81)*rad;
+  const eot=9.87*Math.sin(2*g)-7.53*Math.cos(g)-1.5*Math.sin(g);
+  const decl=23.45*Math.sin((360/365*(day-81))*rad)*rad;
+  const ha=Math.acos((Math.cos(90.833*rad)-Math.sin(lat*rad)*Math.sin(decl))/(Math.cos(lat*rad)*Math.cos(decl)))/rad;
+  const solarNoon=720-4*lon+540-eot; // KST(UTC+9) 기준 분
+  const fmt=(m)=>{m=((m%1440)+1440)%1440;const h=Math.floor(m/60),mi=Math.round(m%60);
+    return String(h).padStart(2,"0")+":"+String(mi).padStart(2,"0");};
+  return {rise:fmt(solarNoon-4*ha), set:fmt(solarNoon+4*ha)};
+}
+
+/* 예보 위험판정 (예보값은 기온 기준으로 근사) */
+function judgeDay(hi, lo, pop){
+  return judgeHeat(hi) || judgeCold(lo) ||
+         (pop>=70 ? {...LV.warning, name:"강수 유의", act:"우천 대비 · 미끄럼 주의 · 우의 준비"} : null) ||
+         {...LV.good, name:"위험요인 없음", act:"기본 안전수칙을 지키며 조사를 진행하세요"};
+}
+
+/* 기상청 원본(JSON 문자열 3종) → 화면용 데이터로 변환 */
+function transform(raw, lat, lon){
+  const out = {};
+  const safe = (s)=>{ try{ return typeof s==="string" ? JSON.parse(s) : s; }catch(e){ return null; } };
+
+  /* ① 현재(실황) */
+  const n = safe(raw.ncst);
+  const nItems = n?.response?.body?.items?.item || [];
+  const nv = {}; nItems.forEach(it=>nv[it.category]=parseFloat(it.obsrValue));
+  const T=nv.T1H??0, RH=nv.REH??50, W=nv.WSD??0, R1=nv.RN1??0, PTY=nv.PTY??0;
+  const base = nItems[0] ? `${nItems[0].baseDate.slice(4,6)}-${nItems[0].baseDate.slice(6,8)} ${nItems[0].baseTime.slice(0,2)}:${nItems[0].baseTime.slice(2,4)}` : "";
+  out.temp=T; out.humid=Math.round(RH); out.wind=W; out.rain=R1;
+  out.feels=Math.round(feelsLike(T,RH,W)*10)/10;
+  out.updated=base; out.diff=null; out.pm=null; out.tmin=T;
+
+  /* ② 3일 예보 */
+  const f = safe(raw.fcst);
+  const fItems = f?.response?.body?.items?.item || [];
+  const byDate = {};
+  fItems.forEach(it=>{
+    (byDate[it.fcstDate] ||= {tmp:[], pop:[], sky:{}, pty:{}, tmn:null, tmx:null});
+    const d = byDate[it.fcstDate];
+    if (it.category==="TMP") d.tmp.push(parseFloat(it.fcstValue));
+    if (it.category==="TMN") d.tmn=parseFloat(it.fcstValue);
+    if (it.category==="TMX") d.tmx=parseFloat(it.fcstValue);
+    if (it.category==="POP") d.pop.push(parseFloat(it.fcstValue));
+    if (it.category==="SKY" && it.fcstTime==="1200") d.sky=it.fcstValue;
+    if (it.category==="PTY" && it.fcstTime==="1200") d.pty=it.fcstValue;
+  });
+  const dates = Object.keys(byDate).sort().slice(0,3);
+  const labels = ["오늘","내일","모레"];
+  out.days = dates.map((dt,i)=>{
+    const d = byDate[dt];
+    const lo = d.tmn ?? (d.tmp.length?Math.min(...d.tmp):0);
+    const hi = d.tmx ?? (d.tmp.length?Math.max(...d.tmp):0);
+    const pop = d.pop.length?Math.max(...d.pop):0;
+    const [ico] = skyIcon(d.pty, d.sky);
+    const risk = judgeDay(hi, lo, pop);
+    if (risk.name.startsWith("고온") && i>0) risk.name = risk.name+" 예상";
+    return {label:labels[i]||dt, ico, lo, hi, risk};
+  });
+  const today = byDate[dates[0]];
+  if (today && today.tmn!=null) out.tmin = today.tmn;
+
+  /* 현재 아이콘/텍스트 */
+  const nowSky = fItems.find(it=>it.category==="SKY");
+  const [ico,txt] = skyIcon(PTY, nowSky?nowSky.fcstValue:"1");
+  out.icon=ico; out.text=txt;
+
+  /* ③ 특보 (방어적 해석 — 형식이 다르면 '확인 불가'로) */
+  out.warnings = [];
+  try{
+    const w = safe(raw.warn);
+    const wItems = w?.response?.body?.items?.item;
+    const arr = Array.isArray(wItems) ? wItems : (wItems ? [wItems] : []);
+    arr.slice(0,3).forEach(it=>{
+      const title = it.title || it.t1 || null;
+      const time  = it.tmFc ? `${String(it.tmFc).slice(4,6)}-${String(it.tmFc).slice(6,8)} ${String(it.tmFc).slice(8,10)}:00 발표` : "";
+      const detail = ["t2","t3","t6","t7"].map(k=>it[k]).filter(v=>v && String(v).trim() && String(v).trim()!=="o 없음")
+        .join("\n\n").replace(/\r/g,"");
+      if (title) out.warnings.push({ico:"📢", tx:title, time, detail});
+    });
+  }catch(e){}
+
+  /* ④ 일출·일몰 */
+  const st = sunTimes(lat, lon, new Date());
+  out.sunrise=st.rise; out.sunset=st.set;
+  return out;
+}
+
+/* ═══════════ ⑥ 데이터 불러오기 ═══════════ */
+const LIVE = MAKE_WEBHOOK_URL && !MAKE_WEBHOOK_URL.includes("MAKE_URL_HERE");
+let cur = { lat:HOME.lat, lon:HOME.lon, stn:HOME.stn, name:HOME.name, sub:HOME.sub };
+
+async function load(){
+  if (!LIVE){ render(SAMPLE, cur.name, cur.sub); return; }
+  try{
+    toast("날씨를 불러오는 중...");
+    const g = toGrid(cur.lat, cur.lon);
+    const res = await fetch(`${MAKE_WEBHOOK_URL}?nx=${g.nx}&ny=${g.ny}&lat=${cur.lat}&lon=${cur.lon}&stn=${cur.stn||143}`);
+    const raw = await res.json();
+    const d = transform(raw, cur.lat, cur.lon);
+    render(d, cur.name, cur.sub); hideToast();
+  }catch(e){ toast("데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."); }
+}
+function refresh(){ load(); }
+function useHome(){ cur = {lat:HOME.lat, lon:HOME.lon, stn:HOME.stn, name:HOME.name, sub:HOME.sub}; load(); }
+function useGPS(){
+  if (!navigator.geolocation){ toast("이 기기에서는 위치 기능을 사용할 수 없습니다."); return; }
+  if (!LIVE){ toast("📍 현재위치 갱신은 실데이터 연동 후 사용할 수 있습니다."); return; }
+  toast("위치 확인 중...");
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{ const nr = nearestRegion(pos.coords.latitude, pos.coords.longitude);
+      cur = {lat:pos.coords.latitude, lon:pos.coords.longitude, stn:(nr?nr[3]:143),
+        name:`현재 위치${nr?` (${nr[0]} 인근)`:""}`,
+        sub:`위도 ${pos.coords.latitude.toFixed(3)}, 경도 ${pos.coords.longitude.toFixed(3)}`}; load(); },
+    ()=>toast("위치 권한이 거부되었거나 확인에 실패했습니다."),
+    {enableHighAccuracy:true, timeout:8000});
+}
+
+
+/* ═══════════ ⑦ 전국 시·군 좌표 (지역 검색용) ═══════════ */
+const REGIONS = (()=>{
+  // stnId: 109 수도권 / 105 강원 / 131 충북 / 133 대전·세종·충남 / 146 전북 / 156 광주·전남 / 143 대구·경북 / 159 부산·울산·경남 / 184 제주
+  const G = [
+  [109, [["서울",37.566,126.978],["서울 종로구",37.573,126.979],["서울 중구",37.564,126.998],["서울 용산구",37.532,126.990],["서울 성동구",37.563,127.037],["서울 광진구",37.538,127.082],["서울 동대문구",37.574,127.040],["서울 중랑구",37.606,127.093],["서울 성북구",37.589,127.017],["서울 강북구",37.640,127.026],["서울 도봉구",37.669,127.047],["서울 노원구",37.654,127.056],["서울 은평구",37.603,126.929],["서울 서대문구",37.579,126.937],["서울 마포구",37.566,126.902],["서울 양천구",37.517,126.867],["서울 강서구",37.551,126.850],["서울 구로구",37.495,126.888],["서울 금천구",37.457,126.895],["서울 영등포구",37.526,126.896],["서울 동작구",37.512,126.940],["서울 관악구",37.478,126.952],["서울 서초구",37.484,127.033],["서울 강남구",37.517,127.047],["서울 송파구",37.515,127.106],["서울 강동구",37.530,127.124],
+   ["인천",37.456,126.705],["인천 중구",37.474,126.622],["인천 동구",37.474,126.643],["인천 미추홀구",37.464,126.650],["인천 연수구",37.410,126.678],["인천 남동구",37.447,126.731],["인천 부평구",37.507,126.722],["인천 계양구",37.538,126.738],["인천 서구",37.545,126.676],["강화",37.747,126.488],
+   ["수원",37.263,127.029],["성남",37.420,127.127],["고양",37.658,126.832],["용인",37.241,127.178],["부천",37.503,126.766],["안산",37.322,126.831],["안양",37.394,126.957],["남양주",37.636,127.216],["화성",37.199,126.831],["평택",36.992,127.113],["의정부",37.738,127.034],["시흥",37.380,126.803],["파주",37.760,126.780],["김포",37.615,126.716],["광명",37.479,126.865],["광주(경기)",37.429,127.255],["군포",37.361,126.935],["이천",37.272,127.435],["오산",37.150,127.077],["하남",37.539,127.215],["양주",37.785,127.046],["구리",37.594,127.130],["안성",37.008,127.280],["포천",37.895,127.200],["의왕",37.345,126.968],["여주",37.298,127.637],["동두천",37.904,127.061],["과천",37.429,126.988],["가평",37.831,127.510],["양평",37.492,127.488],["연천",38.096,127.075]]],
+  [105, [["춘천",37.881,127.730],["원주",37.342,127.920],["강릉",37.752,128.876],["동해",37.525,129.114],["태백",37.164,128.986],["속초",38.207,128.592],["삼척",37.450,129.165],["홍천",37.697,127.889],["횡성",37.492,127.985],["영월",37.184,128.462],["평창",37.371,128.390],["정선",37.381,128.661],["철원",38.147,127.313],["화천",38.106,127.708],["양구",38.110,127.990],["인제",38.070,128.170],["고성(강원)",38.380,128.468],["양양",38.075,128.619]]],
+  [131, [["청주",36.642,127.489],["충주",36.991,127.926],["제천",37.132,128.191],["보은",36.489,127.729],["옥천",36.306,127.571],["영동",36.175,127.783],["증평",36.785,127.581],["진천",36.855,127.436],["괴산",36.815,127.787],["음성",36.940,127.690],["단양",36.985,128.365]]],
+  [133, [["대전",36.351,127.385],["대전 동구",36.312,127.455],["대전 중구",36.326,127.421],["대전 서구",36.355,127.384],["대전 유성구",36.362,127.356],["대전 대덕구",36.347,127.416],["세종",36.480,127.289],
+   ["천안",36.815,127.114],["공주",36.447,127.119],["보령",36.333,126.613],["아산",36.790,127.002],["서산",36.785,126.450],["논산",36.187,127.099],["계룡",36.274,127.249],["당진",36.890,126.646],["금산",36.109,127.488],["부여",36.276,126.910],["서천",36.080,126.691],["청양",36.459,126.802],["홍성",36.601,126.661],["예산",36.681,126.845],["태안",36.746,126.298]]],
+  [146, [["전주",35.824,127.148],["군산",35.968,126.737],["익산",35.948,126.958],["정읍",35.570,126.856],["남원",35.416,127.390],["김제",35.804,126.880],["완주",35.905,127.162],["진안",35.792,127.425],["무주",36.007,127.661],["장수",35.647,127.521],["임실",35.618,127.289],["순창",35.374,127.138],["고창",35.436,126.702],["부안",35.732,126.733]]],
+  [156, [["광주",35.160,126.851],["광주 동구",35.146,126.923],["광주 서구",35.152,126.890],["광주 남구",35.133,126.902],["광주 북구",35.174,126.912],["광주 광산구",35.140,126.794],
+   ["목포",34.812,126.392],["여수",34.760,127.662],["순천",34.951,127.487],["나주",35.016,126.711],["광양",34.940,127.696],["담양",35.321,126.988],["곡성",35.282,127.292],["구례",35.202,127.463],["고흥",34.611,127.285],["보성",34.771,127.080],["화순",35.064,126.987],["장흥",34.682,126.907],["강진",34.642,126.767],["해남",34.573,126.599],["영암",34.800,126.697],["무안",34.990,126.482],["함평",35.066,126.517],["영광",35.277,126.512],["장성",35.302,126.785],["완도",34.311,126.755],["진도",34.487,126.263],["신안",34.833,126.351]]],
+  [143, [["대구",35.871,128.601],["대구 중구",35.869,128.606],["대구 동구",35.887,128.635],["대구 서구",35.872,128.559],["대구 남구",35.846,128.598],["대구 북구",35.886,128.583],["대구 수성구",35.858,128.631],["대구 달서구",35.830,128.533],["대구 달성군",35.775,128.431],["군위",36.243,128.573],
+   ["포항",36.019,129.343],["경주",35.856,129.225],["김천",36.140,128.114],["안동",36.568,128.730],["구미",36.120,128.344],["영주",36.806,128.624],["영천",35.973,128.939],["상주",36.411,128.159],["문경",36.587,128.187],["경산",35.825,128.741],["의성",36.353,128.697],["청송",36.436,129.057],["영양",36.656,129.113],["영덕",36.415,129.366],["청도",35.647,128.734],["고령",35.726,128.263],["성주",35.919,128.283],["칠곡",35.995,128.402],["예천",36.658,128.453],["봉화",36.893,128.733],["울진",36.993,129.401],["울릉",37.484,130.906]]],
+  [159, [["부산",35.180,129.075],["부산 중구",35.106,129.032],["부산 서구",35.098,129.024],["부산 동구",35.129,129.045],["부산 영도구",35.091,129.068],["부산 부산진구",35.163,129.053],["부산 동래구",35.205,129.084],["부산 남구",35.137,129.084],["부산 북구",35.197,128.990],["부산 해운대구",35.163,129.164],["부산 사하구",35.104,128.975],["부산 금정구",35.243,129.092],["부산 강서구",35.212,128.981],["부산 연제구",35.176,129.080],["부산 수영구",35.145,129.113],["부산 사상구",35.152,128.991],["기장",35.245,129.222],
+   ["울산",35.539,129.311],["울산 중구",35.569,129.333],["울산 남구",35.544,129.330],["울산 동구",35.505,129.417],["울산 북구",35.583,129.361],["울주",35.522,129.243],
+   ["창원",35.228,128.681],["진주",35.180,128.108],["통영",34.854,128.433],["사천",35.004,128.064],["김해",35.228,128.889],["밀양",35.504,128.747],["거제",34.881,128.621],["양산",35.335,129.037],["의령",35.322,128.262],["함안",35.272,128.406],["창녕",35.545,128.492],["고성(경남)",34.973,128.322],["남해",34.838,127.893],["하동",35.067,127.751],["산청",35.416,127.874],["함양",35.520,127.725],["거창",35.687,127.910],["합천",35.567,128.166]]],
+  [184, [["제주",33.500,126.531],["서귀포",33.254,126.560]]]
+  ];
+  const out=[];
+  G.forEach(([stn,list])=>list.forEach(([n,la,lo])=>out.push([n,la,lo,stn])));
+  return out;
+})();
+function openSearch(){ $("ovl").classList.add("on"); $("rq").value=""; filterRegions(); setTimeout(()=>$("rq").focus(),50); }
+function closeSearch(){ $("ovl").classList.remove("on"); }
+function filterRegions(){
+  const q = $("rq").value.trim();
+  const list = q ? REGIONS.filter(r=>r[0].split(/[\s()]/).some(w=>w.startsWith(q))) : REGIONS.slice(0,30);
+  $("rlist").innerHTML = list.slice(0,40).map((r,i)=>
+    `<div class="ritem" onclick="pickRegion('${r[0]}',${r[1]},${r[2]},${r[3]})">${r[0]}<span>위도 ${r[1]}</span></div>`).join("")
+    || `<div class="none" style="padding:10px;">검색 결과가 없습니다</div>`;
+}
+function pickRegion(name, lat, lon, stn){
+  closeSearch();
+  cur = {lat, lon, stn, name, sub:`${name} 지역 (검색 위치)`};
+  load();
+}
+function nearestRegion(lat, lon){
+  let best=null, bd=1e9;
+  REGIONS.forEach(r=>{ const d=(r[1]-lat)**2+(r[2]-lon)**2; if(d<bd){bd=d;best=r;} });
+  return best;
+}
+
+/* 토스트 */
+let toastTimer=null;
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.style.display="block";
+  clearTimeout(toastTimer); toastTimer=setTimeout(hideToast, 3500); }
+function hideToast(){ $("toast").style.display="none"; }
+
+/* 시작 */
+document.getElementById("safetyBtn").href = "tel:" + SAFETY_TEL; document.getElementById("safetyNum").textContent = SAFETY_TEL;
+if (LIVE) $("sampleBadge").style.display="none";
+load();
+</script>
+</body>
+</html>
