@@ -166,6 +166,17 @@
 
 <div class="wrap">
 
+  <!-- 🔑 기상청 키 연결 안내 (키가 없을 때만 표시) -->
+  <section class="card" id="kmaBanner" style="display:none;border:1.5px solid #f0d79b;background:#fdf4de;">
+    <b style="font-size:13.5px;">🔑 기상청 API 키가 아직 연결되지 않아 샘플 화면이 표시됩니다.</b>
+    <div style="font-size:12px;color:#8a6205;margin:6px 0 10px;line-height:1.7;">
+      공공데이터포털(data.go.kr) 로그인 → 마이페이지 → 인증키의 <b>일반 인증키(Decoding)</b>를
+      복사해 아래 버튼으로 한 번만 넣어주세요. 키는 <b>이 브라우저에만 저장</b>되며 어디에도 전송되지 않습니다.
+    </div>
+    <button onclick="askKmaKey()" style="border:none;background:#2e7d32;color:#fff;font-weight:800;
+      font-size:13px;padding:9px 16px;border-radius:10px;cursor:pointer;font-family:inherit;">🔑 기상청 키 입력하기</button>
+  </section>
+
   <!-- ① 현재 날씨 + 종합판정 + 일출일몰 -->
   <section class="card hero">
     <div id="goLight"></div>
@@ -213,17 +224,6 @@
     <div id="days"></div>
   </section>
 
-  <!-- ④ 안전서식 바로가기 -->
-  <section class="card">
-    <h2>📝 안전서식 바로 작성</h2>
-    <div class="cta">
-      <a class="ctabtn" href="https://tally.so/r/VLAe2N" target="_blank" rel="noopener">
-        <span class="ci">✅</span><span>일일 안전확인 일지<span class="cs">조사 당일 · 참석자 전원 서명</span></span></a>
-      <a class="ctabtn alt" href="https://tally.so/r/LZqAop" target="_blank" rel="noopener">
-        <span class="ci">📋</span><span>안전점검 체크리스트<span class="cs">출장 전 1회 작성</span></span></a>
-    </div>
-  </section>
-
   <!-- ⑤ 긴급 연락처 -->
   <section class="card">
     <h2>📞 긴급 연락처 <span style="font-weight:700;color:var(--muted);font-size:11.5px;">누르면 바로 연결됩니다</span></h2>
@@ -253,7 +253,18 @@
 
 <script>
 /* ═══════════ ① 설정 (여기만 나중에 수정) ═══════════ */
-const MAKE_WEBHOOK_URL = "https://hook.us2.make.com/c22f8lai3jyt1w2937i5l195zp3bwf2l";   // Make 날씨 창구 주소 (연동 시 교체)
+/* 기상청 공공데이터포털을 브라우저에서 직접 호출합니다 (Make 미사용).
+   키는 화면의 [🔑 기상청 키 입력하기] 버튼으로 넣으면 이 브라우저에만 저장됩니다.
+   ※ 아래 KMA_KEY에 직접 적을 수도 있지만, GitHub에 올릴 파일에는 절대 넣지 마세요. */
+const KMA_KEY = "";
+function getKmaKey(){ return KMA_KEY || localStorage.getItem('kma_key') || ''; }
+function askKmaKey(){
+  const v = prompt("공공데이터포털의 '일반 인증키(Decoding)'를 붙여넣어주세요.\n(빈칸으로 확인을 누르면 저장된 키가 삭제됩니다)");
+  if (v === null) return;
+  if (!v.trim()) localStorage.removeItem('kma_key');
+  else localStorage.setItem('kma_key', v.trim());
+  load();
+}
 const HOME = { name:"멸종위기종복원센터", sub:"경북 영양군 영양읍 고월길 23", lat:36.656, lon:129.113, stn:143 };
 const SAFETY_TEL = "054-680-7144";         // 안전관리 담당자 번호 (확정 시 교체 — 아래 긴급연락처에 자동 반영)
 
@@ -497,26 +508,128 @@ function transform(raw, lat, lon){
   return out;
 }
 
-/* ═══════════ ⑥ 데이터 불러오기 ═══════════ */
-const LIVE = MAKE_WEBHOOK_URL && !MAKE_WEBHOOK_URL.includes("MAKE_URL_HERE");
+/* ═══════════ ⑥ 데이터 불러오기 (기상청 직접 호출) ═══════════ */
+let LIVE = false;
 let cur = { lat:HOME.lat, lon:HOME.lon, stn:HOME.stn, name:HOME.name, sub:HOME.sub };
 
+/* 실황 기준시각: 정시 관측 + 40분 후 공개 → 45분 전 정시 사용 */
+function ncstBase(){
+  const d = new Date(Date.now() - 45*60000);
+  const ymd = d.getFullYear() + String(d.getMonth()+1).padStart(2,"0") + String(d.getDate()).padStart(2,"0");
+  return { date: ymd, time: String(d.getHours()).padStart(2,"0") + "00" };
+}
+/* 단기예보 기준시각: 02/05/08/11/14/17/20/23시 발표 (30분 여유) */
+function fcstBase(){
+  const d = new Date(Date.now() - 30*60000);
+  const slots = [2,5,8,11,14,17,20,23];
+  let pick = null;
+  for (const s of slots) if (s <= d.getHours()) pick = s;
+  if (pick === null){ d.setDate(d.getDate()-1); pick = 23; }
+  const ymd = d.getFullYear() + String(d.getMonth()+1).padStart(2,"0") + String(d.getDate()).padStart(2,"0");
+  return { date: ymd, time: String(pick).padStart(2,"0") + "00" };
+}
+async function kmaGet(path, params){
+  const url = "https://apis.data.go.kr/1360000/" + path
+    + "?serviceKey=" + encodeURIComponent(getKmaKey()) + "&dataType=JSON&" + params;
+  const res = await fetch(url);
+  const j = await res.json();
+  if (j.OpenAPI_ServiceResponse) throw new Error("KEY");   // 키 오류·등록 안 된 API 등
+  return j;
+}
+
 async function load(){
-  if (!LIVE){ render(SAMPLE, cur.name, cur.sub); return; }
+  LIVE = !!getKmaKey();
+  $("kmaBanner").style.display = LIVE ? "none" : "block";
+  $("sampleBadge").style.display = LIVE ? "none" : "block";
+  if (!LIVE){ render(SAMPLE, cur.name, cur.sub); loadDust(); return; }
   try{
     toast("날씨를 불러오는 중...");
     const g = toGrid(cur.lat, cur.lon);
-    const res = await fetch(`${MAKE_WEBHOOK_URL}?nx=${g.nx}&ny=${g.ny}&lat=${cur.lat}&lon=${cur.lon}&stn=${cur.stn||143}`);
-    const raw = await res.json();
-    const d = transform(raw, cur.lat, cur.lon);
+    const nb = ncstBase(), fb = fcstBase();
+    const [ncst, fcst, warn] = await Promise.all([
+      kmaGet("VilageFcstInfoService_2.0/getUltraSrtNcst",
+        `numOfRows=100&pageNo=1&base_date=${nb.date}&base_time=${nb.time}&nx=${g.nx}&ny=${g.ny}`),
+      kmaGet("VilageFcstInfoService_2.0/getVilageFcst",
+        `numOfRows=1000&pageNo=1&base_date=${fb.date}&base_time=${fb.time}&nx=${g.nx}&ny=${g.ny}`),
+      kmaGet("WthrWrnInfoService/getWthrWrnMsg",
+        `numOfRows=10&pageNo=1&stnId=${cur.stn||143}`)
+    ]);
+    const d = transform({ncst, fcst, warn}, cur.lat, cur.lon);
     render(d, cur.name, cur.sub); hideToast();
-  }catch(e){ toast("데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."); }
+  }catch(e){
+    if (e.message === "KEY")
+      toast("기상청 키가 올바르지 않거나, 해당 API 활용신청이 안 된 키입니다. [🔑]에서 다시 확인해주세요.");
+    else
+      toast("데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+  }
+  loadDust();
+}
+
+/* ═══════════ ⑥-2 미세먼지 (에어코리아 — 같은 공공데이터포털 키 사용) ═══════════ */
+const SIDO_MAP = {"서울특별시":"서울","부산광역시":"부산","대구광역시":"대구","인천광역시":"인천",
+  "광주광역시":"광주","대전광역시":"대전","울산광역시":"울산","세종특별자치시":"세종","경기도":"경기",
+  "강원특별자치도":"강원","강원도":"강원","충청북도":"충북","충청남도":"충남",
+  "전북특별자치도":"전북","전라북도":"전북","전라남도":"전남","경상북도":"경북","경상남도":"경남",
+  "제주특별자치도":"제주","제주도":"제주"};
+function dustGrade(pm10, pm25){   // 환경부 기준: 나쁜 쪽으로 판정
+  const g10 = pm10==null?0 : pm10<=30?0 : pm10<=80?1 : pm10<=150?2 : 3;
+  const g25 = pm25==null?0 : pm25<=15?0 : pm25<=35?1 : pm25<=75?2 : 3;
+  return [["😊","좋음","#0ca30c"],["🙂","보통","#2b6cb0"],["😷","나쁨","#ec835a"],["🤢","매우나쁨","#d03b3b"]][Math.max(g10,g25)];
+}
+async function loadDust(){
+  const el = $("pm"), tile = $("pmTile");
+  if (!getKmaKey()){ el.textContent = "키 연결 후 표시"; return; }
+  try{
+    el.textContent = "확인 중…";
+    /* ① 현재 좌표의 시·도, 시·군 이름 알아내기 (실패하면 경북 기준) */
+    let sido = "경북", county = "";
+    try{
+      const r = await fetch("https://nominatim.openstreetmap.org/reverse?format=json"
+        + "&lat=" + cur.lat + "&lon=" + cur.lon + "&zoom=10&accept-language=ko");
+      const a = (await r.json()).address || {};
+      const prov = a.province || a.state || a.city || "";
+      if (SIDO_MAP[prov]) sido = SIDO_MAP[prov];
+      else { const k = Object.keys(SIDO_MAP).find(k=>prov.indexOf(k.slice(0,2))===0); if (k) sido = SIDO_MAP[k]; }
+      county = (a.county || a.city || a.borough || "").replace(/(특별시|광역시|특별자치시|시|군|구)$/,"");
+    }catch(e){}
+    /* ② 해당 시·도의 실시간 측정값 */
+    const res = await fetch("https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty"
+      + "?serviceKey=" + encodeURIComponent(getKmaKey())
+      + "&returnType=json&numOfRows=200&pageNo=1&ver=1.0&sidoName=" + encodeURIComponent(sido));
+    const j = await res.json();
+    if (j.OpenAPI_ServiceResponse) throw new Error("KEY");
+    const items = j.response?.body?.items || [];
+    const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+    /* ③ 가까운 이름의 측정소 → 없으면 시·도 중앙값 */
+    let pick = county ? items.find(it=>it.stationName &&
+      (it.stationName.indexOf(county)>=0 || county.indexOf(it.stationName)>=0)) : null;
+    if (!pick || (num(pick.pm10Value)==null && num(pick.pm25Value)==null)){
+      const v10 = items.map(it=>num(it.pm10Value)).filter(v=>v!=null).sort((a,b)=>a-b);
+      const v25 = items.map(it=>num(it.pm25Value)).filter(v=>v!=null).sort((a,b)=>a-b);
+      if (!v10.length && !v25.length) throw new Error("NODATA");
+      pick = { stationName: sido + " 평균",
+        pm10Value: v10.length ? v10[Math.floor(v10.length/2)] : null,
+        pm25Value: v25.length ? v25[Math.floor(v25.length/2)] : null };
+    }
+    const p10 = num(pick.pm10Value), p25 = num(pick.pm25Value);
+    const g = dustGrade(p10, p25);
+    tile.classList.remove("pending");
+    el.innerHTML = '<span style="color:'+g[2]+';font-weight:800;">'+g[0]+' '+g[1]+'</span>'
+      + '<div style="font-size:10.5px;color:var(--muted);font-weight:700;margin-top:2px;">'
+      + '미세 ' + (p10??"–") + ' · 초미세 ' + (p25??"–")
+      + '<br>' + String(pick.stationName).replace(/[<>&]/g,"") + '</div>';
+  }catch(e){
+    if (e.message === "KEY")
+      el.innerHTML = '<span style="font-size:11px;">활용신청 필요</span>'
+        + '<div style="font-size:10px;color:var(--muted);font-weight:700;">공공데이터포털에서<br>에어코리아 대기오염정보 신청</div>';
+    else el.textContent = "확인 불가";
+  }
 }
 function refresh(){ load(); }
 function useHome(){ cur = {lat:HOME.lat, lon:HOME.lon, stn:HOME.stn, name:HOME.name, sub:HOME.sub}; load(); }
 function useGPS(){
   if (!navigator.geolocation){ toast("이 기기에서는 위치 기능을 사용할 수 없습니다."); return; }
-  if (!LIVE){ toast("📍 현재위치 갱신은 실데이터 연동 후 사용할 수 있습니다."); return; }
+  if (!getKmaKey()){ toast("📍 현재위치 갱신은 기상청 키 연결 후 사용할 수 있습니다."); return; }
   toast("위치 확인 중...");
   navigator.geolocation.getCurrentPosition(
     (pos)=>{ const nr = nearestRegion(pos.coords.latitude, pos.coords.longitude);
@@ -581,7 +694,6 @@ function hideToast(){ $("toast").style.display="none"; }
 
 /* 시작 */
 document.getElementById("safetyBtn").href = "tel:" + SAFETY_TEL; document.getElementById("safetyNum").textContent = SAFETY_TEL;
-if (LIVE) $("sampleBadge").style.display="none";
 load();
 </script>
 </body>
