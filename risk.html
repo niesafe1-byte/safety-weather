@@ -757,9 +757,9 @@ document.getElementById('btnReset').addEventListener('click', function(){
 function demoResult(){
   const samples = {
     research: {
-      summary: "(데모) 하천 조사 구간에서 익수·미끄러짐 위험이 확인됩니다. 구명조끼 착용과 2인 1조 이동이 필요합니다.",
+      summary: "(데모) 하천 조사 구간에서 익수·미끄러짐 위험이 확인됩니다. 구명조끼 착용과 2인 이상 1조 이동이 필요합니다.",
       risks: [
-        { no:1, box_2d:[80,120,420,520],  factor:"구명조끼 미착용 (데모)", freq:3, sev:5, measure:"입수 전 구명조끼를 착용하고 2인 1조로 상호 확인하세요." },
+        { no:1, box_2d:[80,120,420,520],  factor:"구명조끼 미착용 (데모)", freq:3, sev:5, measure:"입수 전 구명조끼를 착용하고 2인 이상 1조로 상호 확인하세요." },
         { no:2, box_2d:[500,80,900,450],  factor:"이끼 낀 바위 미끄러짐 (데모)", freq:3, sev:2, measure:"미끄럼방지 신발을 착용하고 젖은 바위는 우회하세요." },
         { no:3, box_2d:[450,600,850,950], factor:"벌집 등 야생동물 접근 (데모)", freq:2, sev:3, measure:"조사 전 주변을 살피고 벌 기피제·응급약품을 휴대하세요." }
       ]
@@ -767,7 +767,7 @@ function demoResult(){
     facility: {
       summary: "(데모) 고소작업 구역에서 추락·낙하 위험이 확인됩니다. 하부 통제와 보호구 착용 점검이 필요합니다.",
       risks: [
-        { no:1, box_2d:[80,120,420,520],  factor:"안전대 미체결 (데모)", freq:3, sev:5, measure:"작업 전 안전대 체결 상태를 2인 1조로 상호 확인하세요." },
+        { no:1, box_2d:[80,120,420,520],  factor:"안전대 미체결 (데모)", freq:3, sev:5, measure:"작업 전 안전대 체결 상태를 2인 이상 1조로 상호 확인하세요." },
         { no:2, box_2d:[500,80,900,450],  factor:"하부 출입 통제 미흡 (데모)", freq:2, sev:3, measure:"작업 반경에 출입금지 구역을 설정하고 안내표지를 세우세요." },
         { no:3, box_2d:[450,600,850,950], factor:"자재 적재 불안정 (데모)", freq:1, sev:2, measure:"자재를 낮게 쌓고 결속끈으로 고정하세요." }
       ]
