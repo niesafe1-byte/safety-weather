@@ -161,6 +161,7 @@
     <button class="chipbtn" onclick="refresh()">🔄 새로고침</button>
     <button class="chipbtn" onclick="useGPS()">📍 현재위치로 갱신</button>
     <button class="chipbtn" onclick="useHome()">🏠 기본위치로 복귀</button>
+    <button class="chipbtn" onclick="askKmaKey()">🔑 API 키</button>
   </div>
 </div></header>
 
@@ -257,9 +258,14 @@
    키는 화면의 [🔑 기상청 키 입력하기] 버튼으로 넣으면 이 브라우저에만 저장됩니다.
    ※ 아래 KMA_KEY에 직접 적을 수도 있지만, GitHub에 올릴 파일에는 절대 넣지 마세요. */
 const KMA_KEY = "";
-function getKmaKey(){ return KMA_KEY || localStorage.getItem('kma_key') || ''; }
+function getKmaKey(){
+  let k = KMA_KEY || localStorage.getItem('kma_key') || '';
+  /* Encoding 키(%2B 같은 % 문자가 포함된 키)를 붙여넣어도 되도록 자동 변환 */
+  if (k.indexOf('%') >= 0){ try { k = decodeURIComponent(k); } catch(e){} }
+  return k;
+}
 function askKmaKey(){
-  const v = prompt("공공데이터포털의 '일반 인증키(Decoding)'를 붙여넣어주세요.\n(빈칸으로 확인을 누르면 저장된 키가 삭제됩니다)");
+  const v = prompt("공공데이터포털의 일반 인증키를 붙여넣어주세요.\n(Encoding·Decoding 어느 쪽이든 됩니다 / 빈칸으로 확인을 누르면 저장된 키가 삭제됩니다)");
   if (v === null) return;
   if (!v.trim()) localStorage.removeItem('kma_key');
   else localStorage.setItem('kma_key', v.trim());
