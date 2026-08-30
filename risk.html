@@ -435,6 +435,11 @@ document.getElementById('btnGps').addEventListener('click', function(){
 
 /* ── AI 키 관리 ── */
 function refreshKeyNotice(){
+  if (GEMINI_KEY) {   // 파일에 키가 심겨 있으면 키 관련 안내를 아예 표시하지 않음
+    document.getElementById('demoNotice').style.display = 'none';
+    document.getElementById('keyOkNotice').style.display = 'none';
+    return;
+  }
   const has = !!getAiKey();
   document.getElementById('demoNotice').style.display = has ? 'none' : 'block';
   document.getElementById('keyOkNotice').style.display = has ? 'block' : 'none';

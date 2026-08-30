@@ -161,7 +161,7 @@
     <button class="chipbtn" onclick="refresh()">🔄 새로고침</button>
     <button class="chipbtn" onclick="useGPS()">📍 현재위치로 갱신</button>
     <button class="chipbtn" onclick="useHome()">🏠 기본위치로 복귀</button>
-    <button class="chipbtn" onclick="askKmaKey()">🔑 API 키</button>
+    <button class="chipbtn" id="keyBtn" onclick="askKmaKey()">🔑 API 키</button>
   </div>
 </div></header>
 
@@ -700,6 +700,7 @@ function hideToast(){ $("toast").style.display="none"; }
 
 /* 시작 */
 document.getElementById("safetyBtn").href = "tel:" + SAFETY_TEL; document.getElementById("safetyNum").textContent = SAFETY_TEL;
+if (KMA_KEY) $("keyBtn").style.display = "none";   // 파일에 키가 심겨 있으면 키 버튼 숨김
 load();
 </script>
 </body>
