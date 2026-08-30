@@ -56,6 +56,25 @@
     border-radius:10px; padding:10px 12px; line-height:1.7;
   }
 
+  /* 홈 (랜딩) 화면 */
+  .home-hero { text-align:center; padding:22px 0 18px; }
+  .home-logo { font-size:44px; }
+  .home-hero h1 { font-size:21px; color:#1a365d; margin-top:6px; }
+  .home-hero p { font-size:13px; color:#718096; margin-top:4px; }
+  .home-card {
+    display:flex; align-items:center; gap:14px; cursor:pointer;
+    transition:transform .1s;
+  }
+  .home-card:active { transform:scale(.98); }
+  .home-ico {
+    font-size:28px; width:52px; height:52px; flex-shrink:0;
+    background:#f0f4f8; border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .home-card h2 { margin-bottom:3px; }
+  .home-card p { margin-bottom:0; }
+  .home-arrow { font-size:26px; color:#cbd5e0; flex-shrink:0; }
+
   /* 하단 탭 */
   nav {
     display:flex; background:#fff; border-top:1.5px solid #e2e8f0; flex-shrink:0;
@@ -77,8 +96,51 @@
 </header>
 
 <main>
+  <!-- 🏠 홈 (랜딩) -->
+  <div class="page on" id="page-home">
+    <div class="trip-wrap">
+      <div class="home-hero">
+        <div class="home-logo">🦎</div>
+        <h1>연구출장 안전 도우미</h1>
+        <p>출장 준비부터 현장 안전까지, 한 곳에서.</p>
+      </div>
+
+      <div class="card home-card" onclick="goTab('trip')">
+        <div class="home-ico">🧳</div>
+        <div>
+          <h2>출장 자동화</h2>
+          <p>출장 전 안전점검 체크리스트와 조사 당일 안전확인 일지를 바로 작성합니다.</p>
+        </div>
+        <div class="home-arrow">›</div>
+      </div>
+
+      <div class="card home-card" onclick="goTab('risk')">
+        <div class="home-ico">⚠️</div>
+        <div>
+          <h2>AI 위험성평가</h2>
+          <p>현장 사진을 올리면 AI가 위험요인을 찾아 표시하고 개선 조치를 알려줍니다. (참고용)</p>
+        </div>
+        <div class="home-arrow">›</div>
+      </div>
+
+      <div class="card home-card" onclick="goTab('weather')">
+        <div class="home-ico">🌤</div>
+        <div>
+          <h2>날씨알림</h2>
+          <p>조사지역의 실시간 날씨·체감온도·기상특보를 신호등으로 확인합니다.</p>
+        </div>
+        <div class="home-arrow">›</div>
+      </div>
+
+      <div class="tip">
+        💡 <b>기본 수칙</b>: 야외조사는 반드시 <b>2인 1조</b> ·
+        출발 전 <b>기상특보 확인</b> · 긴급상황 시 <b>054-680-7144</b>
+      </div>
+    </div>
+  </div>
+
   <!-- ① 출장 자동화 -->
-  <div class="page on" id="page-trip">
+  <div class="page" id="page-trip">
     <div class="trip-wrap">
       <div class="card">
         <span class="step-badge">STEP 1 · 출장 전 (1회)</span>
@@ -119,22 +181,24 @@
 </main>
 
 <nav>
-  <button class="on" data-page="trip"><span class="ico">🧳</span>출장 자동화</button>
+  <button class="on" data-page="home"><span class="ico">🏠</span>홈</button>
+  <button data-page="trip"><span class="ico">🧳</span>출장 자동화</button>
   <button data-page="risk"><span class="ico">⚠️</span>위험성평가</button>
   <button data-page="weather"><span class="ico">🌤</span>날씨알림</button>
 </nav>
 
 <script>
 /* 탭 전환: 처음 여는 탭의 iframe만 그때 불러와서 빠르게 시작 */
-document.querySelectorAll('nav button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b === btn));
-    document.querySelectorAll('.page').forEach(p =>
-      p.classList.toggle('on', p.id === 'page-' + btn.dataset.page));
-    const f = document.querySelector('#page-' + btn.dataset.page + ' iframe');
-    if (f && !f.src) f.src = f.dataset.src;
-  });
-});
+function goTab(name){
+  document.querySelectorAll('nav button').forEach(b =>
+    b.classList.toggle('on', b.dataset.page === name));
+  document.querySelectorAll('.page').forEach(p =>
+    p.classList.toggle('on', p.id === 'page-' + name));
+  const f = document.querySelector('#page-' + name + ' iframe');
+  if (f && !f.src) f.src = f.dataset.src;
+}
+document.querySelectorAll('nav button').forEach(btn =>
+  btn.addEventListener('click', () => goTab(btn.dataset.page)));
 </script>
 </body>
 </html>
