@@ -295,15 +295,16 @@
       <button class="btn-save" id="btnSave">📥 결과 이미지 저장</button>
       <button class="btn-save" id="btnShare" style="background:#805ad5;">📤 사진 바로 보내기 (공유)</button>
 
-      <!-- 관람객 전용: 담당자 제보 안내 -->
+      <!-- 담당자 제보 안내 (평가 후 표시) -->
       <div id="reportBox" style="display:none; margin-top:14px; background:#f0fff4; border:1.5px solid #9ae6b4; border-radius:12px; padding:14px;">
-        <div style="font-size:14px; font-weight:bold; color:#276749; margin-bottom:6px;">📣 위험해 보이는 곳을 발견하셨나요?</div>
-        <div style="font-size:12.5px; color:#2d3748; line-height:1.7; margin-bottom:10px;">
-          가까운 <b>직원이나 안내데스크</b>에 알려주시면 바로 조치하겠습니다.<br>
-          위 [📥 결과 이미지 저장]을 누른 뒤, 저장된 사진을 담당자에게 보여주시면 더 정확해요.
+        <div style="font-size:14px; font-weight:bold; color:#276749; margin-bottom:6px;" id="reportHead">📣 위험해 보이는 곳을 발견하셨나요?</div>
+        <div style="font-size:12.5px; color:#2d3748; line-height:1.7; margin-bottom:10px;" id="reportDesc">
+          담당자에게 알려주시면 바로 조치하겠습니다.
         </div>
         <a class="btn-save" style="display:block; text-align:center; text-decoration:none; margin-top:0; background:#2f855a;"
            href="tel:054-680-7144" id="reportTel">📞 담당자에게 전화로 알리기</a>
+        <a class="btn-save" style="display:none; text-align:center; text-decoration:none; background:#FEE500; color:#191919;"
+           id="reportKakao" href="#" target="_blank" rel="noopener">💬 카카오톡 채널로 알리기 (저장한 사진을 보내주세요)</a>
         <a class="btn-save" style="display:none; text-align:center; text-decoration:none; background:#2b6cb0;"
            id="reportMail" href="#">📧 메일로 알리기 (저장한 이미지를 첨부해주세요)</a>
       </div>
@@ -430,7 +431,8 @@ const IS_VISITOR = location.search.indexOf('vt=1') >= 0
 
 /* 관람객 제보 연락처 — 관람 담당 부서가 정해지면 여기만 바꾸면 됩니다 */
 const VISITOR_CONTACT_TEL = "054-680-7144";   // 전화 제보 (현재: 안전관리 담당자)
-const VISITOR_CONTACT_EMAIL = "";             // 메일 주소를 넣으면 [메일로 알리기] 버튼이 생깁니다
+const VISITOR_CONTACT_EMAIL = "niesafe@nie.re.kr";              // [메일로 알리기] 버튼
+const VISITOR_KAKAO_URL = "https://pf.kakao.com/_gxfxeHn/chat"; // [카카오톡 채널] 버튼
 if (IS_VISITOR){
   currentMode = 'tour';
   document.querySelector('h1').textContent = '🌿 탐방 안전 확인';
@@ -748,22 +750,37 @@ function renderResult(data) {
       </div>
     </div>`).join('');
 
-  /* 관람객: 담당자 제보 안내 표시 */
-  if (IS_VISITOR){
+  /* 담당자 제보 안내 표시 — 모든 이용 유형 공통 */
+  {
     const box = document.getElementById('reportBox');
     box.style.display = 'block';
+    document.getElementById('reportHead').textContent = IS_VISITOR
+      ? '📣 위험해 보이는 곳을 발견하셨나요?'
+      : '📣 개선이 필요한 위험을 담당자에게 알리세요';
+    document.getElementById('reportDesc').innerHTML = IS_VISITOR
+      ? '가까운 <b>직원이나 안내데스크</b>에 알려주시면 바로 조치하겠습니다.<br>위 [📥 결과 이미지 저장]을 누른 뒤, 저장된 사진을 담당자에게 보여주시면 더 정확해요.'
+      : '아래 버튼으로 <b>안전관리 담당자</b>에게 바로 알릴 수 있습니다.<br>[📥 결과 이미지 저장] 또는 [📤 사진 바로 보내기]로 결과 사진을 함께 전달하면 더 정확해요.';
     document.getElementById('reportTel').href = 'tel:' + VISITOR_CONTACT_TEL;
+    if (VISITOR_KAKAO_URL){
+      const k = document.getElementById('reportKakao');
+      k.href = VISITOR_KAKAO_URL;
+      k.style.display = 'block';
+    }
     if (VISITOR_CONTACT_EMAIL){
       const top = risks.map(r => '- ' + r.factor + ' (' + r.j.txt + ')').join('\n');
       const locNow = document.getElementById('location').value.trim();
-      const body = '[국립생태원 안전도우미] 관람 중 위험 발견 제보\n\n'
+      const who = IS_VISITOR ? '관람 중 위험 발견 제보' : '위험성평가 결과 제보';
+      let body = '[국립생태원 안전도우미] ' + who + '\n\n'
         + '발견 시각: ' + new Date().toLocaleString('ko-KR') + '\n'
-        + '발견 위치: ' + (locNow || '(여기에 위치를 적어주세요)') + '\n\n'
-        + 'AI가 확인한 내용:\n' + top + '\n\n'
-        + '※ 저장한 결과 이미지를 이 메일에 첨부해주세요.';
+        + '발견 위치: ' + (locNow || '(여기에 위치를 적어주세요)') + '\n';
+      if (!IS_VISITOR){
+        body += '작성자: ' + (document.getElementById('userName').value.trim() || '-') + '\n'
+          + '평가대상: ' + (document.getElementById('targetName').value.trim() || '-') + '\n';
+      }
+      body += '\nAI가 확인한 내용:\n' + top + '\n\n※ 저장한 결과 이미지를 이 메일에 첨부해주세요.';
       const m = document.getElementById('reportMail');
       m.href = 'mailto:' + VISITOR_CONTACT_EMAIL
-        + '?subject=' + encodeURIComponent('[안전도우미] 관람 중 위험 발견 제보')
+        + '?subject=' + encodeURIComponent('[안전도우미] ' + who)
         + '&body=' + encodeURIComponent(body);
       m.style.display = 'block';
     }
