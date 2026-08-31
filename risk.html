@@ -263,6 +263,19 @@
       <div id="riskList"></div>
       <div class="disclaimer">⚠️ 본 결과는 AI가 사진을 보고 판단한 <b>참고용</b> 자료입니다.</div>
       <button class="btn-save" id="btnSave">📥 결과 이미지 저장</button>
+
+      <!-- 관람객 전용: 담당자 제보 안내 -->
+      <div id="reportBox" style="display:none; margin-top:14px; background:#f0fff4; border:1.5px solid #9ae6b4; border-radius:12px; padding:14px;">
+        <div style="font-size:14px; font-weight:bold; color:#276749; margin-bottom:6px;">📣 위험해 보이는 곳을 발견하셨나요?</div>
+        <div style="font-size:12.5px; color:#2d3748; line-height:1.7; margin-bottom:10px;">
+          가까운 <b>직원이나 안내데스크</b>에 알려주시면 바로 조치하겠습니다.<br>
+          위 [📥 결과 이미지 저장]을 누른 뒤, 저장된 사진을 담당자에게 보여주시면 더 정확해요.
+        </div>
+        <a class="btn-save" style="display:block; text-align:center; text-decoration:none; margin-top:0; background:#2f855a;"
+           href="tel:054-680-7144" id="reportTel">📞 담당자에게 전화로 알리기</a>
+        <a class="btn-save" style="display:none; text-align:center; text-decoration:none; background:#2b6cb0;"
+           id="reportMail" href="#">📧 메일로 알리기 (저장한 이미지를 첨부해주세요)</a>
+      </div>
     </div>
   </div>
 
@@ -380,7 +393,13 @@ document.querySelectorAll('.mode-chip').forEach(c =>
 applyMode('research');
 
 /* ── 관람객 모드: 앱에서 '관람객'을 선택했으면 화면을 확 간소화 ── */
-const IS_VISITOR = localStorage.getItem('user_type') === 'visitor';
+/* 관람객 판정: 앱이 주소에 vt=1을 붙여 부르거나, 저장된 유형이 관람객일 때 */
+const IS_VISITOR = location.search.indexOf('vt=1') >= 0
+  || localStorage.getItem('user_type') === 'visitor';
+
+/* 관람객 제보 연락처 — 관람 담당 부서가 정해지면 여기만 바꾸면 됩니다 */
+const VISITOR_CONTACT_TEL = "054-680-7144";   // 전화 제보 (현재: 안전관리 담당자)
+const VISITOR_CONTACT_EMAIL = "";             // 메일 주소를 넣으면 [메일로 알리기] 버튼이 생깁니다
 if (IS_VISITOR){
   currentMode = 'tour';
   document.querySelector('h1').textContent = '🌿 탐방 안전 확인';
@@ -391,6 +410,7 @@ if (IS_VISITOR){
   dc.querySelector('.label').textContent = '💬 궁금한 점 (안 적어도 돼요)';
   dc.querySelector('.hint').textContent = '사진과 함께 물어보고 싶은 것이 있으면 적어주세요.';
   document.getElementById('workDesc').placeholder = '예: 아이와 함께 걸어도 괜찮을까요?';
+  document.querySelector('.result-title').textContent = '📋 확인 결과';
 }
 
 /* ── 사진 선택 + 자동 압축 (긴 변 1280px, JPEG 80%) ── */
@@ -680,10 +700,30 @@ function renderResult(data) {
       <div class="risk-no" style="background:${r.j.color}">${r.no}</div>
       <div class="risk-body">
         <div class="risk-factor">${esc(r.factor)}<span class="grade ${r.j.cls}">${r.j.txt}</span></div>
-        <div class="risk-score">빈도 ${r.freq} × 강도 ${r.sev} = <b style="color:${r.j.color}">위험성 ${r.score}점</b></div>
+        ${IS_VISITOR ? '' : `<div class="risk-score">빈도 ${r.freq} × 강도 ${r.sev} = <b style="color:${r.j.color}">위험성 ${r.score}점</b></div>`}
         <div class="risk-measure">🛡 ${esc(r.measure)}</div>
       </div>
     </div>`).join('');
+
+  /* 관람객: 담당자 제보 안내 표시 */
+  if (IS_VISITOR){
+    const box = document.getElementById('reportBox');
+    box.style.display = 'block';
+    document.getElementById('reportTel').href = 'tel:' + VISITOR_CONTACT_TEL;
+    if (VISITOR_CONTACT_EMAIL){
+      const top = risks.map(r => '- ' + r.factor + ' (' + r.j.txt + ')').join('\n');
+      const body = '[국립생태원 안전도우미] 관람 중 위험 발견 제보\n\n'
+        + '발견 시각: ' + new Date().toLocaleString('ko-KR') + '\n'
+        + '발견 위치: (여기에 위치를 적어주세요)\n\n'
+        + 'AI가 확인한 내용:\n' + top + '\n\n'
+        + '※ 저장한 결과 이미지를 이 메일에 첨부해주세요.';
+      const m = document.getElementById('reportMail');
+      m.href = 'mailto:' + VISITOR_CONTACT_EMAIL
+        + '?subject=' + encodeURIComponent('[안전도우미] 관람 중 위험 발견 제보')
+        + '&body=' + encodeURIComponent(body);
+      m.style.display = 'block';
+    }
+  }
 
   document.getElementById('resultArea').style.display = 'block';
   document.getElementById('resultArea').scrollIntoView({ behavior:'smooth' });

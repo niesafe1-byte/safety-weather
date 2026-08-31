@@ -421,6 +421,12 @@ function applyUserType(){
   wf.style.display = visitor ? 'none' : 'block';
   if (visitor) loadVisitorWeather();
 
+  /* 위험성평가 화면: 유형에 맞는 주소로 부르고, 유형이 바뀌면 새로 불러옴 */
+  const rf = document.querySelector('#page-risk iframe');
+  const want = visitor ? 'risk.html?vt=1' : 'risk.html';
+  rf.dataset.src = want;
+  if (rf.src && rf.src.split('/').pop() !== want) rf.src = want;
+
   if (visitor && document.querySelector('.page.on').id === 'page-trip') goTab('home');
   loadWarnBanner();
 }
