@@ -105,6 +105,11 @@
   .pack-items span { background:#f0fff4; border:1px solid #9ae6b4; color:#276749;
     border-radius:999px; padding:5px 11px; font-size:12.5px; font-weight:bold; }
   .pack-warn { font-size:12.5px; color:#c53030; font-weight:bold; line-height:1.6; }
+  .place-tip { display:flex; gap:8px; padding:8px 0; border-top:1px solid #edf2f7; font-size:12.5px; line-height:1.55; }
+  .place-tip:first-child { border-top:none; }
+  .place-tip b { color:#1a365d; white-space:nowrap; flex-shrink:0; }
+  .place-tip.good b { color:#2f855a; }
+  .place-tip.good { background:#f0fff4; border-radius:8px; padding:8px 10px; border-top:none; margin-top:4px; }
 
   /* 홈 (랜딩) 화면 */
   .home-hero { text-align:center; padding:22px 0 18px; }
@@ -286,6 +291,12 @@
         <div class="pack-sum" id="vwSum" style="margin-top:8px;">불러오는 중…</div>
         <div class="pack-items" id="vwPack"></div>
         <div class="pack-warn" id="vwWarn" style="display:none;"></div>
+      </div>
+
+      <div class="card" id="vwPlaces" style="display:none;">
+        <h2>🗺️ 오늘의 구역별 안내</h2>
+        <p style="margin-bottom:10px;">오늘 날씨 기준으로, 구역마다 이렇게 관람하시면 좋아요.</p>
+        <div id="vwPlaceList"></div>
       </div>
       <div class="tip">
         🌿 지정된 탐방로만 이용해주세요 · 야생동물에게 먹이를 주거나 가까이 가지 마세요 ·
@@ -500,6 +511,44 @@ async function loadVisitorWeather(){
       pack.push('👟 편한 신발', '📷 카메라');
     }
     if (snow){ pack.push('❄️ 미끄럼 주의'); }
+
+    /* ── 구역별 맞춤 안내 (지도 속 장소 기준) ── */
+    const wt = act ? String(act.title || act.t1) : '';
+    const heavy = wt.indexOf('호우') >= 0;                 // 호우특보 발효
+    const windy = wt.indexOf('강풍') >= 0 || wt.indexOf('태풍') >= 0;
+    const heavySnow = wt.indexOf('대설') >= 0;
+    const veryHot = (hi != null && hi >= 33) || wt.indexOf('폭염') >= 0;
+    const tips = [];
+    if (rain || heavy){
+      tips.push(['하다람놀이터', '기구와 바닥이 미끄러워요. 오늘은 실내 전시(에코리움) 관람을 추천해요.']);
+      tips.push(['습지생태원 · 습지체험장', '나무 데크가 미끄러워요. 뛰지 말고 천천히 걸어주세요.']);
+      tips.push(['용화실못 · 금구리못 · 나저어못', heavy
+        ? '비로 물이 불어날 수 있어요. 물가에 가까이 가지 마세요.'
+        : '못 주변 길이 미끄러워요. 물가에서 한 걸음 떨어져 걸어주세요.']);
+      tips.push(['암석생태원', '바위가 미끄러우니 올라가지 마세요.']);
+    }
+    if (heavySnow || snow){
+      tips.push(['야외 전 구역', '눈 쌓인 길과 데크가 미끄러워요. 손잡이를 잡고 천천히 이동해주세요.']);
+      tips.push(['암석생태원', '결빙 위험이 있어 오늘은 들어가지 않는 게 좋아요.']);
+    }
+    if (veryHot){
+      tips.push(['하다람놀이터', '한낮엔 기구가 뜨거울 수 있어요. 아침·늦은 오후 이용을 추천해요.']);
+      tips.push(['한반도숲 · 야외 정원', '그늘 쉼터에서 자주 쉬고 물을 마셔주세요.']);
+    }
+    if (lo != null && lo <= 0 && !snow){
+      tips.push(['못 주변 · 나무 데크', '서리나 살얼음으로 미끄러울 수 있어요. 조심히 걸어주세요.']);
+    }
+    if (windy){
+      tips.push(['한반도숲 · 숲길', '바람에 나뭇가지가 떨어질 수 있어요. 큰 나무 아래는 피해주세요.']);
+    }
+    if (tips.length){
+      tips.push(['에코리움 (실내)', '날씨 걱정 없이 쾌적해요. 오늘의 추천 코스! 👍']);
+      document.getElementById('vwPlaceList').innerHTML = tips.map((t, i) =>
+        '<div class="place-tip' + (i === tips.length - 1 ? ' good' : '') + '"><b>📍 ' + t[0] + '</b><span>' + t[1] + '</span></div>').join('');
+      document.getElementById('vwPlaces').style.display = 'block';
+    } else {
+      document.getElementById('vwPlaces').style.display = 'none';
+    }
 
     document.getElementById('vwTipTitle').textContent = title;
     document.getElementById('vwTipText').textContent = text;
