@@ -205,6 +205,36 @@
     <textarea id="workDesc"></textarea>
   </div>
 
+  <!-- 관람객 전용: 위치 선택 (지도 속 장소 이름) -->
+  <div class="card" id="cardVLoc" style="display:none;">
+    <div class="label">📍 지금 어디쯤이세요? <span class="req">담당자 확인용</span></div>
+    <div class="hint" style="margin:0 0 8px;">가까운 곳을 골라주세요. 위험한 곳을 제보할 때 담당자가 위치를 찾는 데 큰 도움이 됩니다.</div>
+    <select id="vLocSel">
+      <option value="">▼ 위치를 골라주세요</option>
+      <option>정문 매표소 근처</option>
+      <option>방문자센터·미디리움</option>
+      <option>사슴생태원</option>
+      <option>나저어못</option>
+      <option>금구리못</option>
+      <option>하다람놀이터</option>
+      <option>습지체험장</option>
+      <option>에코리움</option>
+      <option>에코케어센터</option>
+      <option>습지생태원</option>
+      <option>수생식물원</option>
+      <option>용화실못</option>
+      <option>암석생태원</option>
+      <option>사구식물원</option>
+      <option>멸종위기수생식물원</option>
+      <option>한반도숲</option>
+      <option>DMZ 전시원</option>
+      <option>서문 매표소 근처</option>
+      <option>주차장</option>
+      <option value="기타">기타 (직접 입력)</option>
+    </select>
+    <input type="text" id="vLocEtc" placeholder="위치를 직접 적어주세요 (예: 정문에서 사슴생태원 가는 길)" style="display:none; margin-top:8px;">
+  </div>
+
   <!-- 환경/시설 (모드에 따라 내용 변경) -->
   <div class="card" id="cardEnv">
     <div class="label"><span id="envLabel"></span> <span class="req" id="envBadge">개선요청 시 필수</span></div>
@@ -263,6 +293,7 @@
       <div id="riskList"></div>
       <div class="disclaimer">⚠️ 본 결과는 AI가 사진을 보고 판단한 <b>참고용</b> 자료입니다.</div>
       <button class="btn-save" id="btnSave">📥 결과 이미지 저장</button>
+      <button class="btn-save" id="btnShare" style="background:#805ad5;">📤 사진 바로 보내기 (공유)</button>
 
       <!-- 관람객 전용: 담당자 제보 안내 -->
       <div id="reportBox" style="display:none; margin-top:14px; background:#f0fff4; border:1.5px solid #9ae6b4; border-radius:12px; padding:14px;">
@@ -411,6 +442,18 @@ if (IS_VISITOR){
   dc.querySelector('.hint').textContent = '사진과 함께 물어보고 싶은 것이 있으면 적어주세요.';
   document.getElementById('workDesc').placeholder = '예: 아이와 함께 걸어도 괜찮을까요?';
   document.querySelector('.result-title').textContent = '📋 확인 결과';
+  document.getElementById('btnShare').textContent = '📤 담당자에게 사진 보내기';
+
+  /* 위치 선택 카드 표시 + 선택값을 위치칸에 연결 */
+  document.getElementById('cardVLoc').style.display = 'block';
+  const vSel = document.getElementById('vLocSel'), vEtc = document.getElementById('vLocEtc');
+  const syncVLoc = () => {
+    vEtc.style.display = (vSel.value === '기타') ? 'block' : 'none';
+    document.getElementById('location').value =
+      (vSel.value === '기타') ? vEtc.value.trim() : vSel.value;
+  };
+  vSel.addEventListener('change', syncVLoc);
+  vEtc.addEventListener('input', syncVLoc);
 }
 
 /* ── 사진 선택 + 자동 압축 (긴 변 1280px, JPEG 80%) ── */
@@ -712,9 +755,10 @@ function renderResult(data) {
     document.getElementById('reportTel').href = 'tel:' + VISITOR_CONTACT_TEL;
     if (VISITOR_CONTACT_EMAIL){
       const top = risks.map(r => '- ' + r.factor + ' (' + r.j.txt + ')').join('\n');
+      const locNow = document.getElementById('location').value.trim();
       const body = '[국립생태원 안전도우미] 관람 중 위험 발견 제보\n\n'
         + '발견 시각: ' + new Date().toLocaleString('ko-KR') + '\n'
-        + '발견 위치: (여기에 위치를 적어주세요)\n\n'
+        + '발견 위치: ' + (locNow || '(여기에 위치를 적어주세요)') + '\n\n'
         + 'AI가 확인한 내용:\n' + top + '\n\n'
         + '※ 저장한 결과 이미지를 이 메일에 첨부해주세요.';
       const m = document.getElementById('reportMail');
@@ -744,7 +788,7 @@ function wrapLines(ctx, text, maxW){          // 한국어는 글자 단위로 �
   return out;
 }
 
-document.getElementById('btnSave').addEventListener('click', function(){
+function buildReportCanvas(){
   const src = document.getElementById('annotCanvas');
   const out = document.createElement('canvas');
   const c = out.getContext('2d');
@@ -809,11 +853,35 @@ document.getElementById('btnSave').addEventListener('click', function(){
   c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
   c.textAlign = 'left'; c.textBaseline = 'alphabetic';
   render(true);
+  return out;
+}
 
+document.getElementById('btnSave').addEventListener('click', function(){
+  const out = buildReportCanvas();
   const a = document.createElement('a');
   a.download = '위험성평가결과_' + MODES[currentMode].name + '.png';
   a.href = out.toDataURL('image/png');
   a.click();
+});
+
+/* 📤 사진 바로 보내기: 휴대폰 공유창(카카오톡·문자·메일)으로 결과 이미지 전송 */
+document.getElementById('btnShare').addEventListener('click', function(){
+  const out = buildReportCanvas();
+  out.toBlob(async function(blob){
+    const file = new File([blob], '안전확인결과.png', { type: 'image/png' });
+    const loc = document.getElementById('location').value.trim();
+    const data = {
+      files: [file],
+      title: '국립생태원 안전도우미',
+      text: (IS_VISITOR ? '[관람 중 위험 제보] ' : '[위험성평가 결과] ')
+        + '위치: ' + (loc || '(미입력)')
+    };
+    if (navigator.canShare && navigator.canShare({ files: [file] })){
+      try { await navigator.share(data); } catch(e) { /* 사용자가 취소한 경우 */ }
+    } else {
+      alert('이 기기에서는 바로 보내기가 지원되지 않아요.\n[📥 결과 이미지 저장]을 누른 뒤, 저장된 사진을 문자나 카카오톡으로 보내주세요.');
+    }
+  }, 'image/png');
 });
 
 /* ── 초기화 (평가 종류 선택은 유지) ── */
