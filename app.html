@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>연구출장 안전 도우미</title>
+<title>국립생태원 안전도우미</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a365d">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <style>
   /* ─────────────────────────────────────────────
      국립생태원 연구출장 안전 도우미 v1.0
@@ -56,6 +60,52 @@
     border-radius:10px; padding:10px 12px; line-height:1.7;
   }
 
+  /* 이용 유형 선택 (첫 방문) */
+  .type-ovl {
+    position:fixed; inset:0; background:rgba(20,30,25,.6); z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .type-box {
+    background:#fff; border-radius:18px; padding:26px 22px; width:100%; max-width:340px;
+    text-align:center; box-shadow:0 10px 40px rgba(0,0,0,.3);
+  }
+  .type-box h2 { font-size:19px; color:#1a365d; margin:8px 0 4px; }
+  .type-box .sub { font-size:12.5px; color:#718096; margin-bottom:16px; }
+  .type-btn {
+    display:block; width:100%; border:1.5px solid #e2e8f0; background:#fff; color:#2d3748;
+    border-radius:12px; padding:14px 0; font-size:15px; font-weight:bold; font-family:inherit;
+    cursor:pointer; margin-bottom:9px;
+  }
+  .type-btn:active { background:#f0fff4; border-color:#38a169; }
+  .type-row { text-align:center; font-size:12px; color:#718096; margin:-4px 0 12px; }
+  .type-row button {
+    border:none; background:none; color:#2b6cb0; font-size:12px; font-weight:bold;
+    cursor:pointer; font-family:inherit; text-decoration:underline;
+  }
+
+  /* 특보 배너 · 근무지 선택 · 준비물 추천 */
+  .pub-note { font-size:11.5px; color:#2f855a; margin-top:8px; }
+  .warn-banner {
+    background:#c53030; color:#fff; border-radius:12px; padding:11px 14px;
+    font-size:13.5px; margin-bottom:12px; cursor:pointer; text-align:center;
+    box-shadow:0 2px 6px rgba(197,48,48,.3);
+  }
+  .site-row {
+    display:flex; align-items:center; gap:10px; background:#fff; border-radius:12px;
+    padding:10px 14px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.07);
+  }
+  .site-label { font-size:13px; font-weight:bold; white-space:nowrap; }
+  .site-row select {
+    flex:1; border:1.5px solid #e2e8f0; border-radius:10px; padding:8px 10px;
+    font-size:13px; font-family:inherit; background:#fff; color:#2d3748;
+  }
+  .pack-sum { font-size:13px; background:#ebf8ff; border:1px solid #bee3f8; color:#2c5282;
+    border-radius:10px; padding:9px 12px; margin-bottom:8px; line-height:1.6; }
+  .pack-items { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .pack-items span { background:#f0fff4; border:1px solid #9ae6b4; color:#276749;
+    border-radius:999px; padding:5px 11px; font-size:12.5px; font-weight:bold; }
+  .pack-warn { font-size:12.5px; color:#c53030; font-weight:bold; line-height:1.6; }
+
   /* 홈 (랜딩) 화면 */
   .home-hero { text-align:center; padding:22px 0 18px; }
   .home-logo { font-size:44px; }
@@ -91,9 +141,21 @@
 <body>
 
 <header>
-  👷 연구출장 안전 도우미
-  <small>출장 자동화 · AI 위험성평가 · 날씨알림</small>
+  👷 국립생태원 안전도우미
+  <small id="headSub">출장 자동화 · AI 위험성평가 · 날씨알림</small>
 </header>
+
+<!-- 이용 유형 선택 (첫 방문 시 표시) -->
+<div class="type-ovl" id="typeOvl" style="display:none;" onclick="if(event.target===this)closeTypeOvl()">
+  <div class="type-box">
+    <div style="font-size:42px;">👷</div>
+    <h2>어떻게 오셨나요?</h2>
+    <div class="sub">이용 유형에 맞게 화면을 준비해드립니다</div>
+    <button class="type-btn" onclick="setUserType('staff')">🏢 국립생태원 직원</button>
+    <button class="type-btn" onclick="setUserType('external')">🔬 외부조사원</button>
+    <button class="type-btn" onclick="setUserType('visitor')">🌿 관람객</button>
+  </div>
+</div>
 
 <main>
   <!-- 🏠 홈 (랜딩) -->
@@ -101,11 +163,29 @@
     <div class="trip-wrap">
       <div class="home-hero">
         <div class="home-logo">👷</div>
-        <h1>연구출장 안전 도우미</h1>
-        <p>출장 준비부터 현장 안전까지, 한 곳에서.</p>
+        <h1>국립생태원 안전도우미</h1>
+        <p id="heroSub">출장 준비부터 현장 안전까지, 한 곳에서.</p>
+        <p class="pub-note">직원은 물론 탐방객·방문객 등 <b>국민 누구나</b> 사용할 수 있는 야외활동 안전 서비스입니다</p>
       </div>
 
-      <div class="card home-card" onclick="goTab('trip')">
+      <!-- 기상특보 배너 (발효 중일 때만 표시) -->
+      <div id="warnBanner" class="warn-banner" style="display:none;" onclick="goTab('weather')"></div>
+
+      <!-- 이용 유형 표시/변경 -->
+      <div class="type-row">👤 <b id="typeNow"></b> <button onclick="openTypeOvl()">변경</button></div>
+
+      <!-- 근무지 선택 -->
+      <div class="site-row">
+        <span class="site-label" id="siteLabel">📍 근무지</span>
+        <select id="siteSel" onchange="changeSite()">
+          <option value="seocheon">국립생태원 본원 (충남 서천)</option>
+          <option value="yeongyang">멸종위기종복원센터 (경북 영양)</option>
+          <option value="upo">습지센터 (경남 창녕)</option>
+          <option value="gps">📍 내 위치 (위치 허용 시 자동)</option>
+        </select>
+      </div>
+
+      <div class="card home-card" id="homeCardTrip" onclick="goTab('trip')">
         <div class="home-ico">🧳</div>
         <div>
           <h2>출장 자동화</h2>
@@ -117,8 +197,8 @@
       <div class="card home-card" onclick="goTab('risk')">
         <div class="home-ico">⚠️</div>
         <div>
-          <h2>AI 위험성평가</h2>
-          <p>현장 사진을 올리면 AI가 위험요인을 찾아 표시하고 개선 조치를 알려줍니다. (참고용)</p>
+          <h2 id="homeRiskTitle">AI 위험성평가</h2>
+          <p id="homeRiskDesc">현장 사진을 올리면 AI가 위험요인을 찾아 표시하고 개선 조치를 알려줍니다. (참고용)</p>
         </div>
         <div class="home-arrow">›</div>
       </div>
@@ -126,15 +206,19 @@
       <div class="card home-card" onclick="goTab('weather')">
         <div class="home-ico">🌤</div>
         <div>
-          <h2>날씨알림</h2>
-          <p>조사지역의 실시간 날씨·체감온도·기상특보를 신호등으로 확인합니다.</p>
+          <h2 id="homeWeatherTitle">날씨알림</h2>
+          <p id="homeWeatherDesc">조사지역의 실시간 날씨·체감온도·기상특보를 신호등으로 확인합니다.</p>
         </div>
         <div class="home-arrow">›</div>
       </div>
 
-      <div class="tip">
+      <div class="tip" id="tipStaff">
         💡 <b>기본 수칙</b>: 야외조사는 반드시 <b>2인 이상 1조</b> ·
         출발 전 <b>기상특보 확인</b> · 긴급상황 시 안전관리 담당자 <b>054-680-7144</b>
+      </div>
+      <div class="tip" id="tipVisitor" style="display:none;">
+        💡 <b>탐방 안전 수칙</b>: 지정된 탐방로만 이용 ·
+        출발 전 <b>날씨·기상특보 확인</b> · 야생동물 접근 금지 · 긴급상황 시 <b>119</b>
       </div>
     </div>
   </div>
@@ -157,6 +241,21 @@
       </div>
 
       <div class="card">
+        <span class="step-badge" style="background:#c05621;">스마트 준비</span>
+        <h2>🎒 날씨 맞춤 준비물 추천</h2>
+        <p>출장 날짜를 고르면 근무지(홈에서 변경) 지역의 예보를 확인해 챙길 것을 알려드립니다.</p>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+          <select id="packDay" style="flex:1; border:1.5px solid #e2e8f0; border-radius:10px; padding:10px; font-size:14px; font-family:inherit;">
+            <option value="0">오늘</option>
+            <option value="1">내일</option>
+            <option value="2">모레</option>
+          </select>
+          <button class="go-btn blue" style="flex:1.4;" onclick="recommendPack()">🎒 추천 받기</button>
+        </div>
+        <div id="packResult"></div>
+      </div>
+
+      <div class="card">
         <span class="step-badge">현장에서</span>
         <h2>⚠️ AI 위험성평가 · 🌤 날씨 확인</h2>
         <p>현장 사진으로 위험요인을 확인하거나, 조사지역 날씨·기상특보를 확인하려면 아래 메뉴를 눌러주세요.</p>
@@ -174,8 +273,25 @@
     <iframe data-src="risk.html" allow="geolocation" title="AI 위험성평가"></iframe>
   </div>
 
-  <!-- ③ 날씨알림 (운영 중인 안전날씨 대시보드) -->
+  <!-- ③ 날씨알림 (직원: 안전날씨 대시보드 / 관람객: 관람 팁 화면) -->
   <div class="page" id="page-weather">
+    <div class="trip-wrap" id="vWeather" style="display:none;">
+      <div class="card">
+        <span class="step-badge" style="background:#2f855a;">오늘의 관람 팁</span>
+        <h2 id="vwTipTitle">불러오는 중…</h2>
+        <p id="vwTipText">잠시만 기다려주세요.</p>
+      </div>
+      <div class="card">
+        <h2>🌡 오늘 날씨 — 국립생태원 (충남 서천)</h2>
+        <div class="pack-sum" id="vwSum" style="margin-top:8px;">불러오는 중…</div>
+        <div class="pack-items" id="vwPack"></div>
+        <div class="pack-warn" id="vwWarn" style="display:none;"></div>
+      </div>
+      <div class="tip">
+        🌿 지정된 탐방로만 이용해주세요 · 야생동물에게 먹이를 주거나 가까이 가지 마세요 ·
+        긴급상황 시 <b>119</b>
+      </div>
+    </div>
     <iframe data-src="https://niesafe1-byte.github.io/safety-weather/" allow="geolocation" title="안전날씨 대시보드"></iframe>
   </div>
 </main>
@@ -199,6 +315,312 @@ function goTab(name){
 }
 document.querySelectorAll('nav button').forEach(btn =>
   btn.addEventListener('click', () => goTab(btn.dataset.page)));
+
+/* ═══════════ 기상 연동 (특보 배너 · 준비물 추천) ═══════════ */
+const APP_KMA_KEY = "GDewDfD3UhYeNNlThaTbdu%2BYc8iCMapNVSlN9wblZeLXDLjOttYrPE3AY7YhEIRQ7E7B6r7a68h4rwUF8hsWFw%3D%3D";   // 공공데이터포털 키 (자동 주입 자리)
+function appKey(){
+  let k = APP_KMA_KEY;
+  if (k.indexOf('%') >= 0){ try { k = decodeURIComponent(k); } catch(e){} }
+  return k;
+}
+
+/* 근무지 목록 — 추가하려면 여기에 한 줄씩 */
+const SITES = {
+  seocheon:  { name:'국립생태원 본원',    lat:36.030, lon:126.723, stn:133 },   // 충남 서천
+  yeongyang: { name:'멸종위기종복원센터', lat:36.656, lon:129.113, stn:143 },   // 경북 영양
+  upo:       { name:'습지센터',           lat:35.552, lon:128.408, stn:159 }    // 경남 창녕 (우포늪)
+};
+/* GPS로 잡은 위치 (내 위치 선택 시) */
+let gpsSite = null;
+/* 위경도 → 특보 관할(stnId): 가장 가까운 관할 대표지점으로 판단 */
+const STN_POINTS = [
+  [37.57,126.98,109],  // 수도권
+  [37.75,128.88,105],  // 강원
+  [36.64,127.49,131],  // 충북
+  [36.35,127.38,133],  // 대전·세종·충남
+  [35.82,127.15,146],  // 전북
+  [35.16,126.85,156],  // 광주·전남
+  [35.87,128.60,143],  // 대구·경북
+  [35.23,128.68,159],  // 부산·울산·경남
+  [33.49,126.50,184]   // 제주
+];
+function nearestStn(lat, lon){
+  let best = 133, bd = 1e9;
+  STN_POINTS.forEach(p => { const d = (p[0]-lat)*(p[0]-lat) + (p[1]-lon)*(p[1]-lon);
+    if (d < bd){ bd = d; best = p[2]; } });
+  return best;
+}
+function curSite(){
+  if (localStorage.getItem('user_type') === 'visitor') return SITES.seocheon;  // 관람객은 본원 고정
+  const v = localStorage.getItem('app_site') || 'yeongyang';
+  if (v === 'gps' && gpsSite) return gpsSite;
+  return SITES[v] || SITES.yeongyang;
+}
+function useGpsSite(quiet){
+  if (!navigator.geolocation){ if (!quiet) alert('이 기기는 위치 기능을 지원하지 않습니다.'); revertSite(); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const la = pos.coords.latitude, lo = pos.coords.longitude;
+    gpsSite = { name:'내 위치', lat:la, lon:lo, stn:nearestStn(la, lo) };
+    localStorage.setItem('app_site', 'gps');
+    loadWarnBanner();
+    document.getElementById('packResult').innerHTML = '';
+  }, () => {
+    if (!quiet) alert('위치를 가져오지 못했습니다.\n브라우저의 위치 권한을 허용해주세요.');
+    revertSite();
+  }, { enableHighAccuracy:true, timeout:10000 });
+}
+function revertSite(){
+  const prev = localStorage.getItem('app_site') || 'yeongyang';
+  document.getElementById('siteSel').value = (prev === 'gps') ? 'yeongyang' : prev;
+  if (prev === 'gps') localStorage.setItem('app_site', 'yeongyang');
+  loadWarnBanner();
+}
+function changeSite(){
+  const v = document.getElementById('siteSel').value;
+  if (v === 'gps'){ useGpsSite(false); return; }
+  localStorage.setItem('app_site', v);
+  loadWarnBanner();
+  document.getElementById('packResult').innerHTML = '';
+}
+
+/* ── 이용 유형 (직원/외부조사원/관람객) ── */
+const TYPE_NAMES = { staff:'국립생태원 직원', external:'외부조사원', visitor:'관람객' };
+function applyUserType(){
+  const t = localStorage.getItem('user_type');
+  if (!t){ document.getElementById('typeOvl').style.display = 'flex'; return; }
+  document.getElementById('typeOvl').style.display = 'none';
+  const visitor = (t === 'visitor');
+  document.querySelector('nav button[data-page="trip"]').style.display = visitor ? 'none' : '';
+  document.getElementById('homeCardTrip').style.display = visitor ? 'none' : '';
+  document.getElementById('tipStaff').style.display = visitor ? 'none' : 'block';
+  document.getElementById('tipVisitor').style.display = visitor ? 'block' : 'none';
+  document.querySelector('.site-row').style.display = visitor ? 'none' : 'flex';  // 관람객은 본원 고정
+  document.getElementById('typeNow').textContent = TYPE_NAMES[t] || t;
+
+  /* 유형별 안내 문구 */
+  document.getElementById('headSub').textContent = visitor
+    ? '관람 안내 · 탐방 안전 확인 · 오늘의 날씨' : '출장 자동화 · AI 위험성평가 · 날씨알림';
+  document.getElementById('heroSub').textContent = visitor
+    ? '국립생태원 관람을 더 안전하고 즐겁게!' : '출장 준비부터 현장 안전까지, 한 곳에서.';
+  document.getElementById('homeRiskTitle').textContent = visitor ? '탐방 안전 확인' : 'AI 위험성평가';
+  document.getElementById('homeRiskDesc').textContent = visitor
+    ? '사진을 찍으면 AI가 탐방 시 주의할 점을 친절하게 알려드립니다. (참고용)'
+    : '현장 사진을 올리면 AI가 위험요인을 찾아 표시하고 개선 조치를 알려줍니다. (참고용)';
+  document.getElementById('homeWeatherTitle').textContent = visitor ? '오늘의 관람 날씨' : '날씨알림';
+  document.getElementById('homeWeatherDesc').textContent = visitor
+    ? '오늘 날씨에 맞는 관람 방법과 챙길 것을 알려드립니다.'
+    : '조사지역의 실시간 날씨·체감온도·기상특보를 신호등으로 확인합니다.';
+  const riskBtn = document.querySelector('nav button[data-page="risk"]');
+  riskBtn.innerHTML = visitor ? '<span class="ico">🌿</span>탐방 안전' : '<span class="ico">⚠️</span>위험성평가';
+  const wBtn = document.querySelector('nav button[data-page="weather"]');
+  wBtn.innerHTML = visitor ? '<span class="ico">🌤</span>관람 날씨' : '<span class="ico">🌤</span>날씨알림';
+
+  /* 날씨 탭: 관람객은 관람 팁 화면, 직원은 대시보드 */
+  const wf = document.querySelector('#page-weather iframe');
+  document.getElementById('vWeather').style.display = visitor ? 'block' : 'none';
+  wf.style.display = visitor ? 'none' : 'block';
+  if (visitor) loadVisitorWeather();
+
+  if (visitor && document.querySelector('.page.on').id === 'page-trip') goTab('home');
+  loadWarnBanner();
+}
+function setUserType(t){ localStorage.setItem('user_type', t); applyUserType(); }
+
+/* ── 관람객용 오늘의 관람 팁 (서천 본원 고정, 항상 긍정형 안내) ── */
+let vwLoaded = false;
+async function loadVisitorWeather(){
+  if (vwLoaded || !appKey()) return;
+  vwLoaded = true;
+  const s = SITES.seocheon, g = toGrid(s.lat, s.lon), fb = fcstBase();
+  try{
+    const [fj, wj] = await Promise.all([
+      fetch('https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst'
+        + '?serviceKey=' + encodeURIComponent(appKey())
+        + '&dataType=JSON&numOfRows=1000&pageNo=1&base_date=' + fb.date + '&base_time=' + fb.time
+        + '&nx=' + g.nx + '&ny=' + g.ny).then(r => r.json()),
+      fetch('https://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnMsg'
+        + '?serviceKey=' + encodeURIComponent(appKey())
+        + '&dataType=JSON&numOfRows=5&pageNo=1&stnId=' + s.stn).then(r => r.json())
+    ]);
+    /* 오늘 예보 요약 */
+    const items = (fj.response && fj.response.body && fj.response.body.items && fj.response.body.items.item) || [];
+    const byDate = {};
+    items.forEach(it => {
+      (byDate[it.fcstDate] = byDate[it.fcstDate] || { tmp:[], pop:[], pty:[], tmn:null, tmx:null });
+      const d = byDate[it.fcstDate], v = parseFloat(it.fcstValue);
+      if (it.category === 'TMP') d.tmp.push(v);
+      if (it.category === 'TMN') d.tmn = v;
+      if (it.category === 'TMX') d.tmx = v;
+      if (it.category === 'POP') d.pop.push(v);
+      if (it.category === 'PTY') d.pty.push(String(it.fcstValue));
+    });
+    const today = byDate[Object.keys(byDate).sort()[0]] || { tmp:[], pop:[], pty:[] };
+    const hi = today.tmx != null ? today.tmx : (today.tmp.length ? Math.max(...today.tmp) : null);
+    const lo = today.tmn != null ? today.tmn : (today.tmp.length ? Math.min(...today.tmp) : null);
+    const pop = today.pop.length ? Math.max(...today.pop) : 0;
+    const rain = today.pty.some(v => v === '1' || v === '2' || v === '4');
+    const snow = today.pty.some(v => v === '3');
+    /* 발효 중 특보 */
+    const wItems = wj.response && wj.response.body && wj.response.body.items && wj.response.body.items.item;
+    const wArr = Array.isArray(wItems) ? wItems : (wItems ? [wItems] : []);
+    const act = wArr.find(it => (it.title || it.t1) && !String(it.title || it.t1).includes('해제'));
+
+    /* 관람 팁 (항상 "이렇게 즐기세요" 톤) */
+    let title, text; const pack = [];
+    if (act){
+      title = '🏛️ 오늘은 실내 관람을 추천해요';
+      text = '지금 ' + String(act.title || act.t1).replace(/[<>&]/g, '') + ' 상태예요. 실내 전시관(에코리움)은 날씨와 상관없이 쾌적하게 즐길 수 있어요. 야외로 나갈 때는 안전에 꼭 유의해주세요.';
+      document.getElementById('vwWarn').style.display = 'block';
+      document.getElementById('vwWarn').textContent = '⚠️ 기상특보 발효 중 — 야외 이동 시 안내방송과 직원 안내를 따라주세요.';
+    } else if (rain || pop >= 60){
+      title = '🌧 오늘은 실내 관람 코스가 좋아요';
+      text = '비 소식이 있어요. 실내 전시관(에코리움)은 비가 와도 쾌적하답니다. 야외 구간을 걸을 땐 우산과 미끄럼 주의!';
+      pack.push('🌂 우산', '👟 미끄럼 주의');
+    } else if (hi != null && hi >= 33){
+      title = '🏛️ 한낮엔 시원한 실내, 야외는 아침·저녁에!';
+      text = '오늘은 많이 더워요. 한낮에는 실내 전시를 즐기고, 야외 탐방은 아침이나 늦은 오후가 좋아요. 물을 자주 마셔주세요.';
+      pack.push('🥤 물·음료', '🧢 모자', '🧴 자외선 차단제');
+    } else if (hi != null && hi >= 31){
+      title = '☀️ 야외 탐방 좋아요 — 더위만 조심!';
+      text = '야외 탐방하기 괜찮은 날이에요. 다만 더위가 있으니 그늘에서 자주 쉬어주세요.';
+      pack.push('🥤 물·음료', '🧢 모자');
+    } else if (lo != null && lo <= 0){
+      title = '🧣 따뜻하게 입고 오세요';
+      text = '쌀쌀한 날이에요. 실내 전시 중심으로 관람하고, 야외로 나갈 땐 든든하게 입어주세요.';
+      pack.push('🧥 따뜻한 겉옷', '🧤 장갑');
+    } else {
+      title = '☀️ 야외 탐방하기 딱 좋은 날이에요!';
+      text = '습지와 야외 정원까지 여유롭게 둘러보기 좋은 날씨예요. 즐거운 관람 되세요!';
+      pack.push('👟 편한 신발', '📷 카메라');
+    }
+    if (snow){ pack.push('❄️ 미끄럼 주의'); }
+
+    document.getElementById('vwTipTitle').textContent = title;
+    document.getElementById('vwTipText').textContent = text;
+    document.getElementById('vwSum').innerHTML =
+      '기온 <b>' + (lo != null ? lo : '?') + '~' + (hi != null ? hi : '?') + '℃</b> · 강수확률 최고 <b>' + pop + '%</b>'
+      + (rain ? ' · 비 예보 있음' : '') + (snow ? ' · 눈 예보 있음' : '');
+    document.getElementById('vwPack').innerHTML = pack.map(t => '<span>' + t + '</span>').join('');
+  }catch(e){
+    vwLoaded = false;
+    document.getElementById('vwTipTitle').textContent = '날씨를 불러오지 못했어요';
+    document.getElementById('vwTipText').textContent = '잠시 후 화면을 새로고침해 주세요.';
+  }
+}
+function openTypeOvl(){ document.getElementById('typeOvl').style.display = 'flex'; }
+function closeTypeOvl(){ if (localStorage.getItem('user_type')) document.getElementById('typeOvl').style.display = 'none'; }
+
+/* 위경도 → 기상청 격자 변환 */
+function toGrid(lat, lon){
+  const RE=6371.00877, GRID=5.0, SLAT1=30.0, SLAT2=60.0, OLON=126.0, OLAT=38.0, XO=43, YO=136;
+  const D=Math.PI/180, re=RE/GRID, s1=SLAT1*D, s2=SLAT2*D, ol=OLON*D, oa=OLAT*D;
+  let sn=Math.tan(Math.PI*0.25+s2*0.5)/Math.tan(Math.PI*0.25+s1*0.5);
+  sn=Math.log(Math.cos(s1)/Math.cos(s2))/Math.log(sn);
+  let sf=Math.pow(Math.tan(Math.PI*0.25+s1*0.5),sn)*Math.cos(s1)/sn;
+  let ro=re*sf/Math.pow(Math.tan(Math.PI*0.25+oa*0.5),sn);
+  let ra=re*sf/Math.pow(Math.tan(Math.PI*0.25+lat*D*0.5),sn);
+  let th=lon*D-ol; if(th>Math.PI)th-=2*Math.PI; if(th<-Math.PI)th+=2*Math.PI; th*=sn;
+  return {nx:Math.floor(ra*Math.sin(th)+XO+0.5), ny:Math.floor(ro-ra*Math.cos(th)+YO+0.5)};
+}
+/* 단기예보 기준시각: 02/05/08/11/14/17/20/23시 발표 (30분 여유) */
+function fcstBase(){
+  const d = new Date(Date.now() - 30*60000);
+  const slots = [2,5,8,11,14,17,20,23];
+  let pick = null;
+  for (const s of slots) if (s <= d.getHours()) pick = s;
+  if (pick === null){ d.setDate(d.getDate()-1); pick = 23; }
+  const ymd = d.getFullYear() + String(d.getMonth()+1).padStart(2,"0") + String(d.getDate()).padStart(2,"0");
+  return { date: ymd, time: String(pick).padStart(2,"0") + "00" };
+}
+
+/* ── 홈 특보 배너: 발효 중인 특보가 있으면 표시 ── */
+async function loadWarnBanner(){
+  const b = document.getElementById('warnBanner');
+  if (!appKey()){ b.style.display = 'none'; return; }
+  try{
+    const r = await fetch('https://apis.data.go.kr/1360000/WthrWrnInfoService/getWthrWrnMsg'
+      + '?serviceKey=' + encodeURIComponent(appKey())
+      + '&dataType=JSON&numOfRows=5&pageNo=1&stnId=' + curSite().stn);
+    const j = await r.json();
+    const items = j && j.response && j.response.body && j.response.body.items && j.response.body.items.item;
+    const arr = Array.isArray(items) ? items : (items ? [items] : []);
+    const active = arr.find(it => (it.title || it.t1) && !String(it.title || it.t1).includes('해제'));
+    if (active){
+      const title = String(active.title || active.t1).replace(/[<>&]/g, '');
+      b.innerHTML = '🚨 <b>' + title + '</b><br><span style="font-size:11.5px;opacity:.9;">현재 기상특보가 발효 중입니다 — 눌러서 자세히 보기</span>';
+      b.style.display = 'block';
+    } else b.style.display = 'none';
+  }catch(e){ b.style.display = 'none'; }
+}
+
+/* ── 날씨 맞춤 준비물 추천 ── */
+async function recommendPack(){
+  const out = document.getElementById('packResult');
+  if (!appKey()){ out.innerHTML = '<div class="pack-sum">날씨 연동이 아직 준비되지 않았습니다.</div>'; return; }
+  out.innerHTML = '<div class="pack-sum">⏳ 예보를 확인하는 중…</div>';
+  try{
+    const s = curSite(), g = toGrid(s.lat, s.lon), fb = fcstBase();
+    const r = await fetch('https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst'
+      + '?serviceKey=' + encodeURIComponent(appKey())
+      + '&dataType=JSON&numOfRows=1000&pageNo=1&base_date=' + fb.date + '&base_time=' + fb.time
+      + '&nx=' + g.nx + '&ny=' + g.ny);
+    const j = await r.json();
+    const items = (j && j.response && j.response.body && j.response.body.items && j.response.body.items.item) || [];
+    if (!items.length) throw new Error('no data');
+
+    /* 날짜별로 묶기 */
+    const byDate = {};
+    items.forEach(it => {
+      (byDate[it.fcstDate] = byDate[it.fcstDate] || { tmp:[], pop:[], pty:[], wsd:[], tmn:null, tmx:null });
+      const d = byDate[it.fcstDate], v = parseFloat(it.fcstValue);
+      if (it.category === 'TMP') d.tmp.push(v);
+      if (it.category === 'TMN') d.tmn = v;
+      if (it.category === 'TMX') d.tmx = v;
+      if (it.category === 'POP') d.pop.push(v);
+      if (it.category === 'PTY') d.pty.push(String(it.fcstValue));
+      if (it.category === 'WSD') d.wsd.push(v);
+    });
+    const dates = Object.keys(byDate).sort();
+    const idx = Math.min(Number(document.getElementById('packDay').value), dates.length - 1);
+    const d = byDate[dates[idx]];
+    const hi = d.tmx != null ? d.tmx : (d.tmp.length ? Math.max(...d.tmp) : null);
+    const lo = d.tmn != null ? d.tmn : (d.tmp.length ? Math.min(...d.tmp) : null);
+    const pop = d.pop.length ? Math.max(...d.pop) : 0;
+    const rain = d.pty.some(v => v === '1' || v === '2' || v === '4');
+    const snow = d.pty.some(v => v === '3');
+    const wmax = d.wsd.length ? Math.max(...d.wsd) : 0;
+
+    /* 추천 목록 만들기 */
+    const packs = ['🧰 구급함·비상약', '🦺 안전조끼', '🔋 휴대폰 보조배터리'];
+    const warns = [];
+    if (hi != null && hi >= 33){ packs.push('🥤 물·이온음료 넉넉히', '🧢 모자·쿨토시', '⛱️ 그늘막'); warns.push('폭염 수준 더위 — 12~17시 야외조사 자제, 매시간 그늘 휴식'); }
+    else if (hi != null && hi >= 31){ packs.push('🥤 물·이온음료', '🧢 모자'); warns.push('더위 주의 — 수분 자주 섭취'); }
+    if (lo != null && lo <= -12){ packs.push('🧥 방한복·핫팩', '🧤 방한장갑'); warns.push('한파 수준 추위 — 야외조사 단축 검토'); }
+    else if (lo != null && lo <= 0){ packs.push('🧥 방한복·핫팩'); }
+    if (rain || pop >= 60){ packs.push('🌂 우의·방수가방', '👟 미끄럼방지 신발'); warns.push('비 예보 — 계곡·하천변 접근 주의'); }
+    else if (pop >= 30){ packs.push('🌂 우산'); }
+    if (snow){ packs.push('❄️ 아이젠·차량 체인'); warns.push('눈 예보 — 도로 결빙 주의'); }
+    if (wmax >= 9){ packs.push('🧥 바람막이'); warns.push('강한 바람 — 고소·사다리 작업 금지, 낙하물 주의'); }
+
+    const dt = dates[idx];
+    out.innerHTML =
+      '<div class="pack-sum">📅 <b>' + dt.slice(4,6) + '/' + dt.slice(6,8) + ' · ' + s.name + '</b><br>'
+      + '기온 ' + (lo != null ? lo : '?') + '~' + (hi != null ? hi : '?') + '℃ · 강수확률 최고 ' + pop + '%'
+      + (rain ? ' · 비 예보 있음' : '') + (snow ? ' · 눈 예보 있음' : '') + '</div>'
+      + '<div class="pack-items">' + packs.map(t => '<span>' + t + '</span>').join('') + '</div>'
+      + (warns.length ? '<div class="pack-warn">⚠️ ' + warns.join('<br>⚠️ ') + '</div>' : '')
+      + '<div class="hint" style="margin-top:6px;">상세 날씨·특보는 [🌤 날씨알림] 탭에서 확인하세요.</div>';
+  }catch(e){
+    out.innerHTML = '<div class="pack-sum">예보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</div>';
+  }
+}
+
+/* 시작: 이용 유형 확인 + 저장된 근무지 복원 + 특보 확인 */
+applyUserType();
+const savedSite = localStorage.getItem('app_site') || 'yeongyang';
+document.getElementById('siteSel').value = (SITES[savedSite] || savedSite === 'gps') ? savedSite : 'yeongyang';
+if (savedSite === 'gps') useGpsSite(true);   // 지난번 '내 위치' 사용자는 조용히 재확인
+loadWarnBanner();
 </script>
 </body>
 </html>

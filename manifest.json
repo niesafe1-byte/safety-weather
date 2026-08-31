@@ -1,0 +1,14 @@
+{
+  "name": "국립생태원 안전도우미",
+  "short_name": "안전도우미",
+  "description": "국립생태원 출장·야외활동·관람 안전 통합 앱 (출장 자동화·AI 위험성평가·날씨알림·관람 안내)",
+  "start_url": "./app.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f0f4f8",
+  "theme_color": "#1a365d",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
